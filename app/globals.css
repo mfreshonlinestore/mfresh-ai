@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+
+/* Smooth Scroll */
+
+html {
+  scroll-behavior: smooth;
+}
+
+
+
+/* Body */
+
+body {
+
+  margin: 0;
+
+  padding: 0;
+
+  overflow-x: hidden;
+
+  background: #ffffff;
+
+  color: #1f2937;
+
+  font-family: Arial, Helvetica, sans-serif;
+
+}
+
+
+
+/* Selection */
+
+::selection {
+
+  background: #16a34a;
+
+  color: white;
+
+}
+
+
+
+/* Links */
+
+a {
+
+  text-decoration: none;
+
+  transition: all 0.3s ease;
+
+}
+
+
+
+/* Buttons */
+
+button {
+
+  transition: all 0.3s ease;
+
+  cursor: pointer;
+
+}
+
+
+
+/* Image */
+
+img {
+
+  max-width: 100%;
+
+  height: auto;
+
+}
+
+
+
+/* Scroll Bar */
+
+::-webkit-scrollbar {
+
+  width: 8px;
+
+}
+
+
+::-webkit-scrollbar-track {
+
+  background: #f0fdf4;
+
+}
+
+
+::-webkit-scrollbar-thumb {
+
+  background: #15803d;
+
+  border-radius: 20px;
+
+}
+
+
+
+/* Premium Shadow */
+
+.premium-shadow {
+
+  box-shadow:
+  0 20px 40px rgba(0,0,0,0.08);
+
+}
+
+
+
+/* Glass Effect */
+
+.glass {
+
+  background: rgba(255,255,255,0.45);
+
+  backdrop-filter: blur(12px);
+
+  border-radius: 24px;
+
+}
+
+
+
+/* Mobile Fix */
+
+@media(max-width:768px){
+
+  h1{
+
+    line-height:1.1;
+
+  }
+
+
+  section{
+
+    overflow:hidden;
+
+  }
+
+}
