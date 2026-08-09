@@ -23,7 +23,7 @@ const fadeUp: Variants = {
 };
 
 export default function Hero({
-  backgroundImage = "/images/mfresh-hero-bg.jpg",
+  backgroundImage = "/images/hero-bg.png",
   bottleImage = "/images/milk-bottle.png",
 }: HeroProps) {
   return (
