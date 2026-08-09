@@ -91,7 +91,8 @@ export default function Contact() {
 
                 <p className="text-gray-600 mt-2">
                   M Fresh Dairy<br/>
-                  Chennai, Tamil Nadu
+                  1/94 Gangai Amman Kovil Street, Kolathur<br/>
+                  Chennai, Tamil Nadu - 600127
                 </p>
               </div>
 
@@ -223,6 +224,31 @@ export default function Contact() {
 
 
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-10 overflow-hidden rounded-3xl bg-white p-3 shadow-xl"
+        >
+          <iframe
+            title="M Fresh Dairy location"
+            src="https://www.google.com/maps?q=1%2F94%20Gangai%20Amman%20Kovil%20Street%2C%20Kolathur%2C%20Chennai%2C%20Tamil%20Nadu%20600127&output=embed"
+            className="h-[360px] w-full rounded-2xl border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
+
+          <a
+            href="https://maps.app.goo.gl/24GMKXAUDjrMcchZA?g_st=ic"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex rounded-full bg-green-600 px-6 py-3 font-semibold text-white hover:bg-green-700"
+          >
+            Get Directions
+          </a>
+        </motion.div>
 
 
       </div>
