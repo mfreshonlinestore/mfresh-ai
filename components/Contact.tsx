@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { FormEvent, useState } from "react";
 import {
   MapPin,
   Phone,
@@ -10,6 +11,19 @@ import {
 
 
 export default function Contact() {
+
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const whatsappMessage = `Hello M Fresh Dairy,\n\nName: ${name}\nPhone: ${phone}\nMessage: ${message}`;
+    const whatsappUrl = `https://wa.me/919150852830?text=${encodeURIComponent(whatsappMessage)}`;
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  }
 
   return (
 
@@ -146,7 +160,7 @@ export default function Contact() {
 
           {/* Form */}
 
-          <motion.div
+          <motion.form
 
             initial={{
               opacity:0,
@@ -164,16 +178,25 @@ export default function Contact() {
 
             className="bg-white rounded-3xl p-8 shadow-xl"
 
+            onSubmit={handleSubmit}
+
           >
 
             <input
               placeholder="Your Name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
               className="w-full p-4 border rounded-xl mb-4"
             />
 
 
             <input
               placeholder="Phone Number"
+              type="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              required
               className="w-full p-4 border rounded-xl mb-4"
             />
 
@@ -181,18 +204,22 @@ export default function Contact() {
             <textarea
               placeholder="Your Message"
               rows={5}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              required
               className="w-full p-4 border rounded-xl"
             />
 
 
             <button
+              type="submit"
               className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-full font-semibold"
             >
               Send Message
             </button>
 
 
-          </motion.div>
+          </motion.form>
 
 
         </div>
