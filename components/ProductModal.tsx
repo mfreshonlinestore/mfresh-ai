@@ -20,6 +20,9 @@ export default function ProductModal({
 }: Props) {
   if (!open || !product) return null;
 
+  const message = `Hello M Fresh Dairy, I would like to order ${product.name}.`;
+  const orderLink = `https://wa.me/919150852830?text=${encodeURIComponent(message)}`;
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6">
 
@@ -52,9 +55,14 @@ export default function ProductModal({
           {product.price}
         </h3>
 
-        <button className="mt-8 w-full bg-green-600 text-white py-4 rounded-full">
+        <a
+          href={orderLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-8 block w-full bg-green-600 py-4 text-center text-white rounded-full"
+        >
           Order On WhatsApp
-        </button>
+        </a>
 
       </div>
 

@@ -38,6 +38,12 @@ const plans = [
   },
 ];
 
+const whatsappNumber = "919150852830";
+
+function getSubscriptionLink(planTitle: string) {
+  const message = `Hello M Fresh Dairy, I would like to subscribe to the ${planTitle} plan.`;
+  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
 
 export default function Subscription() {
 
@@ -138,11 +144,14 @@ export default function Subscription() {
 
 
 
-              <button
+              <a
+                href={getSubscriptionLink(plan.title)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-8 w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-full font-semibold"
               >
-                Subscribe Now
-              </button>
+                Subscribe on WhatsApp
+              </a>
 
 
             </motion.div>
