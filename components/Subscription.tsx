@@ -148,7 +148,7 @@ export default function Subscription() {
                 href={getSubscriptionLink(plan.title)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-8 w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-full font-semibold"
+                className="mt-8 block w-full rounded-full bg-green-600 py-4 text-center font-semibold text-white hover:bg-green-700"
               >
                 Subscribe on WhatsApp
               </a>
