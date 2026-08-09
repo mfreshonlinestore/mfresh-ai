@@ -22,7 +22,7 @@ export default function Contact() {
     const whatsappMessage = `Hello M Fresh Dairy,\n\nName: ${name}\nPhone: ${phone}\nMessage: ${message}`;
     const whatsappUrl = `https://wa.me/919150852830?text=${encodeURIComponent(whatsappMessage)}`;
 
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+    window.location.href = whatsappUrl;
   }
 
   return (
