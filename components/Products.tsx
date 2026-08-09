@@ -37,6 +37,10 @@ const products = [
   },
 ];
 
+function getOrderLink(productName: string) {
+  const message = `Hello M Fresh Dairy, I would like to order ${productName}.`;
+  return `https://wa.me/919150852830?text=${encodeURIComponent(message)}`;
+}
 
 export default function Products() {
 
@@ -146,7 +150,10 @@ export default function Products() {
 
 
 
-              <button
+              <a
+                href={getOrderLink(product.name)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-5 w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-full font-semibold"
               >
 
@@ -154,7 +161,7 @@ export default function Products() {
 
                 Order Now
 
-              </button>
+              </a>
 
 
             </motion.div>
