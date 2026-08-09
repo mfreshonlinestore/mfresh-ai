@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 type HeroProps = {
   backgroundImage?: string;
   bottleImage?: string;
 };
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 28 },
   visible: (delay = 0) => ({
     opacity: 1,
