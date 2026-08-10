@@ -101,7 +101,7 @@ export default function Hero({
               href="#about"
               className="rounded-full border border-white/35 px-6 py-3 text-sm font-bold text-white transition hover:border-white hover:bg-white/10"
             >
-              Discover M Fresh
+              Discover M Fresh Dairy 🥛
             </Link>
           </motion.div>
         </div>
