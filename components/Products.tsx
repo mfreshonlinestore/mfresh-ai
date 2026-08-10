@@ -9,13 +9,13 @@ const products = [
     name: "Fresh Cow Milk",
     image: "/images/milk-bottle.png",
     description: "100% Pure Farm Fresh Cow Milk",
-    price: "₹76 / Litre",
+    price: "₹80 / 1 Litre",
   },
   {
     name: "Fresh Curd",
     image: "/images/curd.png",
     description: "Thick & Natural Homemade Taste",
-    price: "₹80 / Litre",
+    price: "₹50 / 500 ml",
   },
   {
     name: "Premium Paneer",
@@ -33,7 +33,7 @@ const products = [
     name: "Pure Cow Ghee",
     image: "/images/ghee.png",
     description: "Traditional Pure Cow Ghee",
-    price: "₹500 / 500ml",
+    price: "₹700 / 500 ml",
   },
 ];
 
