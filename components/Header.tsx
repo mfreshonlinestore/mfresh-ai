@@ -34,7 +34,7 @@ export default function Header() {
 
 
           <Image
-            src="/images/logo.jpeg"
+            src="/images/logo.png"
             alt="M Fresh Dairy"
             width={55}
             height={55}

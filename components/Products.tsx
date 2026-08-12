@@ -37,8 +37,8 @@ const products = [
   },
 ];
 
-function getOrderLink(productName: string) {
-  const message = `Hello M Fresh Dairy, I would like to order ${productName}.`;
+function getOrderLink(product: { name: string; price: string }) {
+  const message = `Hello M Fresh Dairy, I would like to order:\nProduct: ${product.name}\nPrice: ${product.price}\nQuantity: 1`;
   return `https://wa.me/919150852830?text=${encodeURIComponent(message)}`;
 }
 
@@ -151,7 +151,7 @@ export default function Products() {
 
 
               <a
-                href={getOrderLink(product.name)}
+                href={getOrderLink(product)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-5 w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-full font-semibold"
