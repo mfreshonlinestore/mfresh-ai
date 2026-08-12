@@ -192,7 +192,9 @@ export default function Footer() {
 
             <Mail size={22}/>
 
-            info@mfreshdairy.com
+            <a href="mailto:mfresh.onlinestore@gmail.com" className="hover:underline">
+              mfresh.onlinestore@gmail.com
+            </a>
 
           </p>
 

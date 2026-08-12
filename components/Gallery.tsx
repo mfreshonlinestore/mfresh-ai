@@ -6,28 +6,39 @@ import { motion } from "framer-motion";
 
 const gallery = [
   {
-    image: "/images/farm.png",
-    title: "Our Healthy Farms",
-  },
-  {
-    image: "/images/cow.png",
-    title: "Healthy Cows",
-  },
-  {
-    image: "/images/milk-collection.png",
-    title: "Fresh Milk Collection",
-  },
-  {
     image: "/images/packing.png",
-    title: "Hygienic Packing",
+    title: "Fresh Milk Packing",
+    fit: "cover",
   },
   {
     image: "/images/delivery.png",
-    title: "Morning Delivery",
+    title: "Fresh Milk Delivery",
+    fit: "cover",
   },
   {
     image: "/images/products.png",
-    title: "Fresh Dairy Products",
+    title: "M Fresh Dairy Products",
+    fit: "cover",
+  },
+  {
+    image: "/images/curd.png",
+    title: "Fresh Curd",
+    fit: "contain",
+  },
+  {
+    image: "/images/paneer.png",
+    title: "Premium Paneer",
+    fit: "contain",
+  },
+  {
+    image: "/images/butter.png",
+    title: "Fresh Butter",
+    fit: "contain",
+  },
+  {
+    image: "/images/ghee.png",
+    title: "Pure Cow Ghee",
+    fit: "contain",
   },
 ];
 
@@ -103,14 +114,12 @@ export default function Gallery() {
 
               <div className="relative h-72">
 
-
                 <Image
                   src={item.image}
                   alt={item.title}
                   fill
-                  className="object-cover group-hover:scale-110 transition duration-500"
+                  className={`object-${item.fit} group-hover:scale-110 transition duration-500`}
                 />
-
 
               </div>
 
