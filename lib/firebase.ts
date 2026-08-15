@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import {
   getFirestore,
   Firestore,
@@ -8,64 +8,91 @@ import {
   Auth,
 } from "firebase/auth";
 
-// Firebase configuration
-// Replace these with your actual Firebase config values
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "demo-key",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "demo.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-project",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "demo.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "demo-sender",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "demo-app",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "",
 };
 
-// Initialize Firebase (will be called only on client-side)
+export const isFirebaseConfigured = (): boolean => {
+  return Object.values(firebaseConfig).every((value) => {
+    const trimmedValue = String(value).trim();
+    return (
+      trimmedValue.length > 0 &&
+      !trimmedValue.includes("demo") &&
+      !trimmedValue.includes("your_") &&
+      !trimmedValue.includes("your-project")
+    );
+  });
+};
+
 let app: ReturnType<typeof initializeApp> | null = null;
 let dbInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
 
 const initializeFirebase = () => {
   if (typeof window === "undefined") {
-    return;
+    return null;
   }
 
-  if (!app) {
+  if (!isFirebaseConfigured()) {
+    console.error(
+      "Firebase is not configured. Add the NEXT_PUBLIC_FIREBASE_* values to .env.local or your Vercel environment variables."
+    );
+    return null;
+  }
+
+  if (!app && getApps().length === 0) {
     try {
       app = initializeApp(firebaseConfig);
       dbInstance = getFirestore(app);
       authInstance = getAuth(app);
     } catch (error) {
       console.error("Failed to initialize Firebase:", error);
+      return null;
     }
   }
+
+  if (!app) {
+    app = getApps()[0];
+    dbInstance = getFirestore(app);
+    authInstance = getAuth(app);
+  }
+
+  return app;
 };
 
-// Lazy-load Firebase services
 export const getDb = (): Firestore | null => {
-  if (typeof window !== "undefined") {
-    initializeFirebase();
-    return dbInstance;
+  if (typeof window === "undefined") {
+    return null;
   }
-  return null;
+
+  const initializedApp = initializeFirebase();
+  if (!initializedApp) {
+    return null;
+  }
+
+  return dbInstance;
 };
 
 export const getAuth_Instance = (): Auth | null => {
-  if (typeof window !== "undefined") {
-    initializeFirebase();
-    return authInstance;
+  if (typeof window === "undefined") {
+    return null;
   }
-  return null;
+
+  const initializedApp = initializeFirebase();
+  if (!initializedApp) {
+    return null;
+  }
+
+  return authInstance;
 };
 
-// For backward compatibility
-export const db = (() => {
-  // This will be executed on build time, but we need to handle null safely
-  return null as Firestore | null;
-})();
-
-export const auth = (() => {
-  return null as Auth | null;
-})();
+export const db = null as Firestore | null;
+export const auth = null as Auth | null;
 
 export default app;
 

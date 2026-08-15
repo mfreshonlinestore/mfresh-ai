@@ -97,6 +97,7 @@ export default function CheckoutPage() {
     }
 
     setIsLoading(true);
+    setErrors((prev) => ({ ...prev, submit: "" }));
 
     try {
       const orderItems: OrderItem[] = items.map((cartItem) => ({
@@ -108,14 +109,21 @@ export default function CheckoutPage() {
       }));
 
       const total = getTotal();
-
       const orderId = await createOrder(formData, orderItems, total);
 
-      // Redirect to confirmation page
       router.push(`/order-confirmation/${orderId}`);
     } catch (error) {
-      console.error("Error placing order:", error);
-      setErrors({ submit: "Failed to place order. Please try again." });
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to place order. Please try again.";
+
+      console.error("Checkout order submission failed:", error);
+      setErrors({
+        submit:
+          message ||
+          "Firebase order creation failed. Please check your Firebase config and Firestore rules.",
+      });
     } finally {
       setIsLoading(false);
     }

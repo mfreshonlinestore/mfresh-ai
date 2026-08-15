@@ -19,41 +19,67 @@ export const createOrder = async (
   items: OrderItem[],
   total: number
 ): Promise<string> => {
+  const orderId = generateOrderId();
+
   try {
     const db = getDb();
     if (!db) {
-      throw new Error("Firebase is not initialized");
+      throw new Error(
+        "Firebase is not configured or available. Add your NEXT_PUBLIC_FIREBASE_* values in .env.local or Vercel and confirm Firestore is enabled."
+      );
     }
 
-    const orderId = generateOrderId();
     const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-    const tax = 0; // Tax calculation can be added later
+    const deliveryCharge = 0;
+    const tax = 0;
+    const finalTotal = Number(total) || subtotal + deliveryCharge + tax;
 
     const orderData = {
       id: orderId,
       customerDetails: {
-        fullName: customerDetails.fullName,
-        mobileNumber: customerDetails.mobileNumber,
-        email: customerDetails.email,
-        deliveryAddress: customerDetails.deliveryAddress,
-        landmark: customerDetails.landmark || "",
-        pincode: customerDetails.pincode,
+        fullName: customerDetails.fullName.trim(),
+        mobileNumber: customerDetails.mobileNumber.trim(),
+        email: customerDetails.email.trim(),
+        deliveryAddress: customerDetails.deliveryAddress.trim(),
+        landmark: customerDetails.landmark?.trim() || "",
+        pincode: customerDetails.pincode.trim(),
       },
-      items: items,
-      subtotal: subtotal,
-      tax: tax,
-      total: total,
+      items: items.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        price: Number(item.price),
+        quantity: Number(item.quantity),
+        subtotal: Number(item.subtotal),
+      })),
+      subtotal,
+      deliveryCharge,
+      tax,
+      total: finalTotal,
       paymentStatus: "pending",
       orderStatus: "pending",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
 
-    await addDoc(collection(db, "orders"), orderData);
-    console.log("Order created with ID:", orderId);
+    const orderWrite = addDoc(collection(db, "orders"), orderData);
+    const timeoutMs = 15000;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timer = setTimeout(() => {
+        clearTimeout(timer);
+        reject(
+          new Error(
+            "Order submission timed out while connecting to Firestore. Check Firebase connectivity, project config, and Firestore rules."
+          )
+        );
+      }, timeoutMs);
+    });
+
+    await Promise.race([orderWrite, timeoutPromise]);
+
+    console.log("Order created successfully with ID:", orderId);
     return orderId;
   } catch (error) {
-    console.error("Error creating order:", error);
+    console.error("Error creating order for orderId:", orderId, error);
     throw error;
   }
 };
