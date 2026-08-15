@@ -2,47 +2,86 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ShoppingCart, Star } from "lucide-react";
+import { ShoppingCart, Star, Plus, Minus } from "lucide-react";
+import { useState } from "react";
+import { useCart } from "@/lib/CartContext";
+import { Product } from "@/lib/types";
 
-const products = [
+const products: Product[] = [
   {
+    id: "milk",
     name: "Fresh Cow Milk",
     image: "/images/milk-bottle.png",
     description: "100% Pure Farm Fresh Cow Milk",
-    price: "₹80 / 1 Litre",
+    price: 80,
+    unit: "1 Litre",
   },
   {
+    id: "curd",
     name: "Fresh Curd",
     image: "/images/curd.png",
     description: "Thick & Natural Homemade Taste",
-    price: "₹50 / 500 ml",
+    price: 50,
+    unit: "500 ml",
   },
   {
+    id: "paneer",
     name: "Premium Paneer",
     image: "/images/paneer.png",
     description: "Soft Premium Quality Paneer",
-    price: "₹135 / 200g",
+    price: 135,
+    unit: "200g",
   },
   {
+    id: "butter",
     name: "Fresh Butter",
     image: "/images/butter.png",
     description: "Fresh Creamy Butter",
-    price: "₹200 / 250g",
+    price: 200,
+    unit: "250g",
   },
   {
+    id: "ghee",
     name: "Pure Cow Ghee",
     image: "/images/ghee.png",
     description: "Traditional Pure Cow Ghee",
-    price: "₹700 / 500 ml",
+    price: 700,
+    unit: "500 ml",
   },
 ];
 
-function getOrderLink(product: { name: string; price: string }) {
-  const message = `Hello M Fresh Dairy, I would like to order:\nProduct: ${product.name}\nPrice: ${product.price}\nQuantity: 1`;
-  return `https://wa.me/919150852830?text=${encodeURIComponent(message)}`;
-}
-
 export default function Products() {
+  const { addItem } = useCart();
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [addedProducts, setAddedProducts] = useState<Set<string>>(new Set());
+
+  const handleQuantityChange = (productId: string, delta: number) => {
+    setQuantities((prev) => ({
+      ...prev,
+      [productId]: Math.max(1, (prev[productId] || 1) + delta),
+    }));
+  };
+
+  const handleAddToCart = (product: Product) => {
+    const quantity = quantities[product.id] || 1;
+    addItem(product, quantity);
+    
+    // Show feedback
+    setAddedProducts((prev) => new Set([...prev, product.id]));
+    setTimeout(() => {
+      setAddedProducts((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(product.id);
+        return newSet;
+      });
+    }, 2000);
+
+    // Reset quantity
+    setQuantities((prev) => ({
+      ...prev,
+      [product.id]: 1,
+    }));
+  };
 
   return (
     <section
@@ -81,7 +120,7 @@ export default function Products() {
           {products.map((product, index) => (
 
             <motion.div
-              key={product.name}
+              key={product.id}
 
               initial={{
                 opacity: 0,
@@ -143,25 +182,49 @@ export default function Products() {
                 {product.description}
               </p>
 
-
-              <p className="mt-4 text-center text-lg font-bold text-green-800">
-                {product.price}
+              <p className="mt-2 text-center text-sm text-gray-500">
+                {product.unit}
               </p>
 
 
+              <p className="mt-4 text-center text-lg font-bold text-green-800">
+                ₹{product.price}
+              </p>
 
-              <a
-                href={getOrderLink(product)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-5 w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-full font-semibold"
+              {/* Quantity Controls */}
+              <div className="mt-5 flex items-center justify-center gap-3 bg-gray-100 rounded-full p-2 w-fit mx-auto">
+                <button
+                  onClick={() => handleQuantityChange(product.id, -1)}
+                  className="p-1 hover:bg-gray-200 rounded-full transition"
+                >
+                  <Minus size={16} className="text-green-700" />
+                </button>
+                <span className="w-8 text-center font-semibold">
+                  {quantities[product.id] || 1}
+                </span>
+                <button
+                  onClick={() => handleQuantityChange(product.id, 1)}
+                  className="p-1 hover:bg-gray-200 rounded-full transition"
+                >
+                  <Plus size={16} className="text-green-700" />
+                </button>
+              </div>
+
+              {/* Add to Cart Button */}
+              <button
+                onClick={() => handleAddToCart(product)}
+                className={`mt-5 w-full flex items-center justify-center gap-2 ${
+                  addedProducts.has(product.id)
+                    ? "bg-green-700"
+                    : "bg-green-600 hover:bg-green-700"
+                } text-white py-3 rounded-full font-semibold transition`}
               >
 
                 <ShoppingCart size={20}/>
 
-                Order Now
+                {addedProducts.has(product.id) ? "Added!" : "Add to Cart"}
 
-              </a>
+              </button>
 
 
             </motion.div>

@@ -3,12 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ShoppingCart } from "lucide-react";
+import { useCart } from "@/lib/CartContext";
 
 
 export default function Header() {
 
   const [open, setOpen] = useState(false);
+  const { getItemCount } = useCart();
+  const cartCount = getItemCount();
 
 
   const menuItems = [
@@ -81,27 +84,41 @@ export default function Header() {
 
         </nav>
 
+        <div className="hidden md:flex items-center gap-4">
+          <Link
+            href="/cart"
+            className="relative p-2 text-green-600 hover:bg-green-50 rounded-full transition"
+          >
+            <ShoppingCart size={24} />
+            {cartCount > 0 && (
+              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </Link>
 
-
-
-
-        <Link
-          href="#subscription"
-          className="hidden md:block bg-green-600 text-white px-6 py-3 rounded-full font-semibold"
-        >
-          Subscribe
-        </Link>
-
-
-
-
+          <Link
+            href="#subscription"
+            className="bg-green-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-green-700 transition"
+          >
+            Subscribe
+          </Link>
+        </div>
 
         {/* Mobile Button */}
 
         <button
-          className="md:hidden text-green-700"
+          className="md:hidden flex items-center gap-4 text-green-700"
           onClick={()=>setOpen(!open)}
         >
+          <Link href="/cart" className="relative p-2">
+            <ShoppingCart size={24} />
+            {cartCount > 0 && (
+              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </Link>
 
           {open ? <X size={30}/> : <Menu size={30}/>}
 
@@ -133,6 +150,13 @@ export default function Header() {
 
           ))}
 
+          <Link
+            href="#subscription"
+            className="block py-3 bg-green-600 text-white rounded-full font-semibold text-center mt-4"
+            onClick={()=>setOpen(false)}
+          >
+            Subscribe
+          </Link>
 
         </div>
 

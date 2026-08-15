@@ -112,7 +112,7 @@ export default function Testimonials() {
 
 
               <p className="mt-6 text-gray-600 leading-7">
-                "{item.review}"
+                &ldquo;{item.review}&rdquo;
               </p>
 
 
