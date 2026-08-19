@@ -12,24 +12,26 @@ import {
   Timestamp,
 } from "firebase/firestore";
 
+export interface CustomerDetails {
+  fullName: string;
+  mobileNumber: string;
+  email: string;
+  deliveryAddress: string;
+  landmark?: string;
+  pincode: string;
+  paymentMethod?: "cod" | "upi";
+  paymentStatus?: string;
+  utrNumber?: string | null;
+  geoCoordinates?: {
+    latitude: number;
+    longitude: number;
+  } | null;
+}
+
 export interface AdminOrder {
   docId?: string;
   id: string;
-  customerDetails: {
-    fullName: string;
-    mobileNumber: string;
-    email: string;
-    deliveryAddress: string;
-    landmark?: string;
-    pincode: string;
-    paymentMethod?: "cod" | "upi";
-    paymentStatus?: string;
-    utrNumber?: string | null;
-    geoCoordinates?: {
-      latitude: number;
-      longitude: number;
-    } | null;
-  };
+  customerDetails: CustomerDetails;
   items: Array<{
     productId: string;
     productName: string;
@@ -100,9 +102,9 @@ export function subscribeToOrders(
                 null,
             },
             items: data.items || [],
-            subtotal: data.subtotal || 0,
-            tax: data.tax || 0,
-            total: data.total || 0,
+            subtotal: Number(data.subtotal) || 0,
+            tax: Number(data.tax) || 0,
+            total: Number(data.total) || 0,
             paymentMethod:
               data.paymentMethod ||
               data.customerDetails?.paymentMethod ||
@@ -161,7 +163,7 @@ export async function calculateDashboardStats(
     if (isToday) {
       todayOrders += 1;
       if (order.orderStatus !== "cancelled") {
-        todaySales += order.total;
+        todaySales += Number(order.total) || 0;
       }
     }
 
