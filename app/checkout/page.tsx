@@ -21,13 +21,13 @@ export default function CheckoutPage() {
   const [locating, setLocating] = useState(false);
   const [locationSuccess, setLocationSuccess] = useState(false);
 
-  // Search Address / Different Location States
+  // Search Address / Custom Location States
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
-  // உங்கள் கடை UPI ID மற்றும் பெயர்
-  const STORE_UPI_ID = "9094792689@upi";
+  // உங்கள் கடை உண்மையான UPI ID மற்றும் வணிகப் பெயர்
+  const STORE_UPI_ID = "gangaarunachalam1998@okicici";
   const STORE_NAME = "M Fresh Dairy";
 
   const [formData, setFormData] = useState<CustomerDetails>({
@@ -82,7 +82,7 @@ export default function CheckoutPage() {
     );
   };
 
-  // 2. Search Any Location (Blinkit/Zepto Type Location Finder)
+  // 2. Search Any Location (Blinkit style Location Finder)
   const handleSearchLocation = async () => {
     if (!searchQuery.trim()) return;
 
@@ -102,7 +102,6 @@ export default function CheckoutPage() {
     }
   };
 
-  // வாடிக்கையாளர் தேடிய முகவரியைத் தேர்வு செய்யும் போது
   const handleSelectLocation = (place: any) => {
     const lat = parseFloat(place.lat);
     const lon = parseFloat(place.lon);
@@ -266,14 +265,13 @@ export default function CheckoutPage() {
                 Delivery Location
               </h2>
 
-              {/* Location Select Options: Live GPS OR Search Any Area */}
+              {/* Location Selector */}
               <div className="mb-6 bg-green-50/60 p-4 rounded-2xl border border-green-200">
                 <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-3">
                   <span className="text-sm font-bold text-gray-800">
                     📍 Choose Delivery Location:
                   </span>
                   
-                  {/* Current Live Location Button */}
                   <button
                     type="button"
                     onClick={handleGetLocation}
@@ -288,7 +286,6 @@ export default function CheckoutPage() {
                   </button>
                 </div>
 
-                {/* Search Any Location Input (Blinkit style) */}
                 <div className="relative">
                   <div className="flex gap-2">
                     <input
@@ -296,7 +293,7 @@ export default function CheckoutPage() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearchLocation()}
-                      placeholder="Or search street, apartment, area (e.g. T Nagar, Anna Nagar)..."
+                      placeholder="Or search street, area, landmark..."
                       className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-green-600 shadow-inner"
                     />
                     <button
@@ -310,7 +307,6 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {/* Search Results Dropdown */}
                   {searchResults.length > 0 && (
                     <div className="absolute left-0 right-0 top-12 z-20 bg-white rounded-xl shadow-xl border border-gray-200 max-h-60 overflow-y-auto divide-y">
                       {searchResults.map((result, idx) => (
@@ -492,7 +488,7 @@ export default function CheckoutPage() {
                           </p>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Pay cash or UPI upon doorstep delivery
+                          Pay cash upon doorstep delivery
                         </p>
                       </div>
                     </label>
