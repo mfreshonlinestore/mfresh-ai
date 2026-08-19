@@ -12,17 +12,26 @@ import {
   Unsubscribe,
 } from "firebase/firestore";
 
+export interface CustomerDetails {
+  fullName: string;
+  mobileNumber: string;
+  email: string;
+  deliveryAddress: string;
+  landmark?: string;
+  pincode: string;
+  paymentMethod?: "cod" | "upi" | string;
+  paymentStatus?: string;
+  utrNumber?: string | null;
+  geoCoordinates?: {
+    latitude: number;
+    longitude: number;
+  } | null;
+}
+
 export interface AdminOrder {
   id: string;
   docId?: string; // Firestore document ID for updates
-  customerDetails: {
-    fullName: string;
-    mobileNumber: string;
-    email: string;
-    deliveryAddress: string;
-    landmark?: string;
-    pincode: string;
-  };
+  customerDetails: CustomerDetails;
   items: Array<{
     productId: string;
     productName: string;
@@ -33,10 +42,18 @@ export interface AdminOrder {
   subtotal: number;
   tax: number;
   total: number;
-  paymentStatus: "pending" | "completed" | "failed";
-  orderStatus: "pending" | "confirmed" | "preparing" | "out_for_delivery" | "delivered" | "cancelled";
-  createdAt?: { toDate: () => Date } | { seconds: number } | null;
-  updatedAt?: { toDate: () => Date } | { seconds: number } | null;
+  paymentMethod?: "cod" | "upi" | string;
+  paymentStatus: "pending" | "completed" | "failed" | "paid" | string;
+  utrNumber?: string | null;
+  orderStatus:
+    | "pending"
+    | "confirmed"
+    | "preparing"
+    | "out_for_delivery"
+    | "delivered"
+    | "cancelled";
+  createdAt?: { toDate: () => Date } | { seconds: number } | any;
+  updatedAt?: { toDate: () => Date } | { seconds: number } | any;
 }
 
 export interface DashboardStats {
@@ -48,16 +65,21 @@ export interface DashboardStats {
 
 // Format Firebase timestamp
 export const formatTimestamp = (
-  timestamp?: { toDate?: () => Date } | { seconds?: number } | null
+  timestamp?: { toDate?: () => Date } | { seconds?: number } | any
 ): Date => {
   if (!timestamp) return new Date();
-  if (typeof timestamp === "object" && "toDate" in timestamp && typeof timestamp.toDate === "function") {
+  if (timestamp instanceof Date) return timestamp;
+  if (
+    typeof timestamp === "object" &&
+    "toDate" in timestamp &&
+    typeof timestamp.toDate === "function"
+  ) {
     return timestamp.toDate();
   }
   if (typeof timestamp === "object" && "seconds" in timestamp) {
     return new Date((timestamp.seconds || 0) * 1000);
   }
-  return new Date();
+  return new Date(timestamp);
 };
 
 // Fetch all orders with real-time listener
@@ -82,6 +104,38 @@ export const subscribeToOrders = (
           orders.push({
             ...data,
             docId: docSnap.id,
+            customerDetails: {
+              fullName: data.customerDetails?.fullName || "",
+              mobileNumber: data.customerDetails?.mobileNumber || "",
+              email: data.customerDetails?.email || "",
+              deliveryAddress: data.customerDetails?.deliveryAddress || "",
+              landmark: data.customerDetails?.landmark || "",
+              pincode: data.customerDetails?.pincode || "",
+              paymentMethod:
+                data.customerDetails?.paymentMethod ||
+                data.paymentMethod ||
+                "cod",
+              paymentStatus:
+                data.customerDetails?.paymentStatus ||
+                data.paymentStatus ||
+                "pending",
+              utrNumber:
+                data.customerDetails?.utrNumber || data.utrNumber || null,
+              geoCoordinates:
+                data.customerDetails?.geoCoordinates ||
+                data.geoCoordinates ||
+                null,
+            },
+            paymentMethod:
+              data.paymentMethod ||
+              data.customerDetails?.paymentMethod ||
+              "cod",
+            paymentStatus:
+              data.paymentStatus ||
+              data.customerDetails?.paymentStatus ||
+              "pending",
+            utrNumber:
+              data.utrNumber || data.customerDetails?.utrNumber || null,
           } as AdminOrder);
         });
         callback(orders);
@@ -127,7 +181,7 @@ export const updateOrderStatus = async (
 // Update payment status
 export const updatePaymentStatus = async (
   docId: string,
-  status: "pending" | "completed" | "failed"
+  status: "pending" | "completed" | "failed" | string
 ): Promise<void> => {
   try {
     const db = getDb();
@@ -201,7 +255,7 @@ export const calculateDashboardStats = async (
     return orderDateOnly.getTime() === today.getTime();
   });
 
-  const todaySales = todayOrders.reduce((sum, order) => sum + order.total, 0);
+  const todaySales = todayOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
   const pendingOrders = orders.filter(
     (order) =>
       order.orderStatus === "pending" || order.orderStatus === "confirmed"
