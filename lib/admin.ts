@@ -1,37 +1,28 @@
-import { db } from "./firebase";
+import { getDb } from "./firebase";
 import {
   collection,
   query,
   orderBy,
-  onSnapshot,
-  doc,
-  updateDoc,
-  serverTimestamp,
   getDocs,
   where,
+  doc,
+  updateDoc,
   Timestamp,
+  onSnapshot,
+  Unsubscribe,
 } from "firebase/firestore";
 
-export interface CustomerDetails {
-  fullName: string;
-  mobileNumber: string;
-  email: string;
-  deliveryAddress: string;
-  landmark?: string;
-  pincode: string;
-  paymentMethod?: "cod" | "upi";
-  paymentStatus?: string;
-  utrNumber?: string | null;
-  geoCoordinates?: {
-    latitude: number;
-    longitude: number;
-  } | null;
-}
-
 export interface AdminOrder {
-  docId?: string;
   id: string;
-  customerDetails: CustomerDetails;
+  docId?: string; // Firestore document ID for updates
+  customerDetails: {
+    fullName: string;
+    mobileNumber: string;
+    email: string;
+    deliveryAddress: string;
+    landmark?: string;
+    pincode: string;
+  };
   items: Array<{
     productId: string;
     productName: string;
@@ -42,18 +33,10 @@ export interface AdminOrder {
   subtotal: number;
   tax: number;
   total: number;
-  paymentMethod?: "cod" | "upi";
-  paymentStatus: string;
-  utrNumber?: string | null;
-  orderStatus:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "out_for_delivery"
-    | "delivered"
-    | "cancelled";
-  createdAt: any;
-  updatedAt?: any;
+  paymentStatus: "pending" | "completed" | "failed";
+  orderStatus: "pending" | "confirmed" | "preparing" | "out_for_delivery" | "delivered" | "cancelled";
+  createdAt?: { toDate: () => Date } | { seconds: number } | null;
+  updatedAt?: { toDate: () => Date } | { seconds: number } | null;
 }
 
 export interface DashboardStats {
@@ -63,131 +46,199 @@ export interface DashboardStats {
   deliveredOrders: number;
 }
 
-export function subscribeToOrders(
-  onUpdate: (orders: AdminOrder[]) => void,
-  onError?: (error: Error) => void
-) {
-  try {
-    const ordersRef = collection(db, "orders");
-    const q = query(ordersRef, orderBy("createdAt", "desc"));
+// Format Firebase timestamp
+export const formatTimestamp = (
+  timestamp?: { toDate?: () => Date } | { seconds?: number } | null
+): Date => {
+  if (!timestamp) return new Date();
+  if (typeof timestamp === "object" && "toDate" in timestamp && typeof timestamp.toDate === "function") {
+    return timestamp.toDate();
+  }
+  if (typeof timestamp === "object" && "seconds" in timestamp) {
+    return new Date((timestamp.seconds || 0) * 1000);
+  }
+  return new Date();
+};
 
-    return onSnapshot(
+// Fetch all orders with real-time listener
+export const subscribeToOrders = (
+  callback: (orders: AdminOrder[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe | null => {
+  try {
+    const db = getDb();
+    if (!db) {
+      throw new Error("Firebase is not initialized");
+    }
+
+    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const orders: AdminOrder[] = snapshot.docs.map((docSnap) => {
+        const orders: AdminOrder[] = [];
+        snapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          return {
+          orders.push({
+            ...data,
             docId: docSnap.id,
-            id: data.id || docSnap.id,
-            customerDetails: {
-              fullName: data.customerDetails?.fullName || "",
-              mobileNumber: data.customerDetails?.mobileNumber || "",
-              email: data.customerDetails?.email || "",
-              deliveryAddress: data.customerDetails?.deliveryAddress || "",
-              landmark: data.customerDetails?.landmark || "",
-              pincode: data.customerDetails?.pincode || "",
-              paymentMethod:
-                data.customerDetails?.paymentMethod ||
-                data.paymentMethod ||
-                "cod",
-              paymentStatus:
-                data.customerDetails?.paymentStatus ||
-                data.paymentStatus ||
-                "pending",
-              utrNumber:
-                data.customerDetails?.utrNumber || data.utrNumber || null,
-              geoCoordinates:
-                data.customerDetails?.geoCoordinates ||
-                data.geoCoordinates ||
-                null,
-            },
-            items: data.items || [],
-            subtotal: Number(data.subtotal) || 0,
-            tax: Number(data.tax) || 0,
-            total: Number(data.total) || 0,
-            paymentMethod:
-              data.paymentMethod ||
-              data.customerDetails?.paymentMethod ||
-              "cod",
-            paymentStatus:
-              data.paymentStatus ||
-              data.customerDetails?.paymentStatus ||
-              "pending",
-            utrNumber:
-              data.utrNumber || data.customerDetails?.utrNumber || null,
-            orderStatus: data.orderStatus || "pending",
-            createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
-          };
+          } as AdminOrder);
         });
-        onUpdate(orders);
+        callback(orders);
       },
       (error) => {
-        console.error("Orders listener error:", error);
-        if (onError) onError(error);
+        console.error("Error listening to orders:", error);
+        if (onError) onError(error as Error);
       }
     );
+
+    return unsubscribe;
   } catch (error) {
-    console.error("Failed to subscribe to orders:", error);
-    if (onError && error instanceof Error) onError(error);
-    return () => {};
+    console.error("Error setting up orders listener:", error);
+    if (onError) onError(error as Error);
+    return null;
   }
-}
+};
 
-export async function updateOrderStatus(
+// Update order status
+export const updateOrderStatus = async (
   docId: string,
-  newStatus: AdminOrder["orderStatus"]
-): Promise<void> {
-  const orderRef = doc(db, "orders", docId);
-  await updateDoc(orderRef, {
-    orderStatus: newStatus,
-    updatedAt: serverTimestamp(),
-  });
-}
+  status: AdminOrder["orderStatus"]
+): Promise<void> => {
+  try {
+    const db = getDb();
+    if (!db) {
+      throw new Error("Firebase is not initialized");
+    }
 
-export async function calculateDashboardStats(
+    const orderRef = doc(db, "orders", docId);
+    await updateDoc(orderRef, {
+      orderStatus: status,
+      updatedAt: Timestamp.now(),
+    });
+
+    console.log(`Order ${docId} status updated to ${status}`);
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    throw error;
+  }
+};
+
+// Update payment status
+export const updatePaymentStatus = async (
+  docId: string,
+  status: "pending" | "completed" | "failed"
+): Promise<void> => {
+  try {
+    const db = getDb();
+    if (!db) {
+      throw new Error("Firebase is not initialized");
+    }
+
+    const orderRef = doc(db, "orders", docId);
+    await updateDoc(orderRef, {
+      paymentStatus: status,
+      updatedAt: Timestamp.now(),
+    });
+
+    console.log(`Order ${docId} payment status updated to ${status}`);
+  } catch (error) {
+    console.error("Error updating payment status:", error);
+    throw error;
+  }
+};
+
+// Get today's orders
+export const getTodayOrders = async (): Promise<AdminOrder[]> => {
+  try {
+    const db = getDb();
+    if (!db) {
+      throw new Error("Firebase is not initialized");
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const q = query(
+      collection(db, "orders"),
+      where("createdAt", ">=", Timestamp.fromDate(today)),
+      where("createdAt", "<", Timestamp.fromDate(tomorrow)),
+      orderBy("createdAt", "desc")
+    );
+
+    const snapshot = await getDocs(q);
+    const orders: AdminOrder[] = [];
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      orders.push({
+        ...data,
+        docId: docSnap.id,
+      } as AdminOrder);
+    });
+
+    return orders;
+  } catch (error) {
+    console.error("Error fetching today's orders:", error);
+    return [];
+  }
+};
+
+// Calculate dashboard stats
+export const calculateDashboardStats = async (
   orders: AdminOrder[]
-): Promise<DashboardStats> {
+): Promise<DashboardStats> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  let todayOrders = 0;
-  let todaySales = 0;
-  let pendingOrders = 0;
-  let deliveredOrders = 0;
-
-  orders.forEach((order) => {
-    const createdAt = formatTimestamp(order.createdAt);
-    const isToday = createdAt >= today;
-
-    if (isToday) {
-      todayOrders += 1;
-      if (order.orderStatus !== "cancelled") {
-        todaySales += Number(order.total) || 0;
-      }
-    }
-
-    if (order.orderStatus === "pending") {
-      pendingOrders += 1;
-    }
-
-    if (order.orderStatus === "delivered" && isToday) {
-      deliveredOrders += 1;
-    }
+  const todayOrders = orders.filter((order) => {
+    const orderDate = formatTimestamp(order.createdAt);
+    const orderDateOnly = new Date(orderDate);
+    orderDateOnly.setHours(0, 0, 0, 0);
+    return orderDateOnly.getTime() === today.getTime();
   });
 
+  const todaySales = todayOrders.reduce((sum, order) => sum + order.total, 0);
+  const pendingOrders = orders.filter(
+    (order) =>
+      order.orderStatus === "pending" || order.orderStatus === "confirmed"
+  ).length;
+  const deliveredOrders = orders.filter(
+    (order) => order.orderStatus === "delivered"
+  ).length;
+
   return {
-    todayOrders,
+    todayOrders: todayOrders.length,
     todaySales,
     pendingOrders,
     deliveredOrders,
   };
-}
+};
 
-export function formatTimestamp(timestamp: any): Date {
-  if (!timestamp) return new Date();
-  if (timestamp instanceof Date) return timestamp;
-  if (typeof timestamp.toDate === "function") return timestamp.toDate();
-  if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
-  return new Date(timestamp);
-}
+// Get order by ID
+export const getOrderById = async (orderId: string): Promise<AdminOrder | null> => {
+  try {
+    const db = getDb();
+    if (!db) {
+      throw new Error("Firebase is not initialized");
+    }
+
+    const q = query(collection(db, "orders"), where("id", "==", orderId));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) return null;
+
+    const docSnap = snapshot.docs[0];
+    const data = docSnap.data();
+    return {
+      ...data,
+      docId: docSnap.id,
+    } as AdminOrder;
+  } catch (error) {
+    console.error("Error fetching order:", error);
+    return null;
+  }
+};
