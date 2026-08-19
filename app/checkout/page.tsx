@@ -154,9 +154,13 @@ export default function CheckoutPage() {
 
       const total = getTotal();
 
-      // GPS Coordinates மற்றும் Payment Details-ஐ Customer Details உடன் இணைத்தல்
       const orderCustomerData: any = {
-        ...formData,
+        fullName: formData.fullName,
+        mobileNumber: formData.mobileNumber,
+        email: formData.email,
+        deliveryAddress: formData.deliveryAddress,
+        landmark: formData.landmark || "",
+        pincode: formData.pincode,
         paymentMethod: paymentMethod,
         paymentStatus: paymentMethod === "cod" ? "Pay on Delivery" : "Paid Online",
         geoCoordinates: locationCoords
@@ -168,7 +172,6 @@ export default function CheckoutPage() {
       };
 
       const orderId = await createOrder(orderCustomerData, orderItems, total);
-
       router.push(`/order-confirmation/${orderId}`);
     } catch (error) {
       const message =
@@ -192,7 +195,6 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pt-32 pb-20">
       <div className="max-w-6xl mx-auto px-6">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -203,7 +205,6 @@ export default function CheckoutPage() {
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Checkout Form */}
           <div className="lg:col-span-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -215,7 +216,6 @@ export default function CheckoutPage() {
                   Delivery Details
                 </h2>
 
-                {/* GPS Location Button */}
                 <button
                   type="button"
                   onClick={handleGetLocation}
@@ -238,7 +238,6 @@ export default function CheckoutPage() {
               )}
 
               <form onSubmit={(e) => e.preventDefault()}>
-                {/* Full Name */}
                 <div className="mb-6">
                   <label className="block text-gray-700 font-semibold mb-2">
                     Full Name <span className="text-red-500">*</span>
@@ -260,7 +259,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Mobile Number */}
                 <div className="mb-6">
                   <label className="block text-gray-700 font-semibold mb-2">
                     Mobile Number <span className="text-red-500">*</span>
@@ -284,7 +282,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Email */}
                 <div className="mb-6">
                   <label className="block text-gray-700 font-semibold mb-2">
                     Email Address <span className="text-red-500">*</span>
@@ -306,7 +303,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Delivery Address */}
                 <div className="mb-6">
                   <label className="block text-gray-700 font-semibold mb-2">
                     Delivery Address <span className="text-red-500">*</span>
@@ -330,7 +326,6 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Landmark */}
                 <div className="mb-6">
                   <label className="block text-gray-700 font-semibold mb-2">
                     Landmark (Optional)
@@ -345,7 +340,6 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                {/* Pincode */}
                 <div className="mb-6">
                   <label className="block text-gray-700 font-semibold mb-2">
                     Pincode <span className="text-red-500">*</span>
@@ -369,14 +363,12 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Payment Method Selector */}
                 <div className="mb-6 pt-6 border-t-2 border-gray-100">
                   <label className="block text-gray-800 font-bold mb-4 text-lg">
                     Select Payment Method <span className="text-red-500">*</span>
                   </label>
 
                   <div className="space-y-3">
-                    {/* Cash on Delivery */}
                     <label
                       onClick={() => setPaymentMethod("cod")}
                       className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${
@@ -406,7 +398,6 @@ export default function CheckoutPage() {
                       </div>
                     </label>
 
-                    {/* Online UPI (GPay / PhonePe) */}
                     <label
                       onClick={() => setPaymentMethod("upi")}
                       className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${
@@ -446,7 +437,6 @@ export default function CheckoutPage() {
               </form>
             </motion.div>
 
-            {/* Order Items Summary for Desktop */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -502,7 +492,6 @@ export default function CheckoutPage() {
             </motion.div>
           </div>
 
-          {/* Sidebar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
