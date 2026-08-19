@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Loader } from "lucide-react";
+import { ArrowRight, Loader, MapPin, CheckCircle, Navigation } from "lucide-react";
 import { useState } from "react";
 
 export default function CheckoutPage() {
@@ -15,6 +15,11 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi">("cod");
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locationSuccess, setLocationSuccess] = useState(false);
+
   const [formData, setFormData] = useState<CustomerDetails>({
     fullName: "",
     mobileNumber: "",
@@ -24,13 +29,53 @@ export default function CheckoutPage() {
     pincode: "",
   });
 
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setLocating(true);
+    setLocationSuccess(false);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setLocationCoords({ lat: latitude, lng: longitude });
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          );
+          const data = await res.json();
+          if (data && data.display_name) {
+            setFormData((prev) => ({
+              ...prev,
+              deliveryAddress: data.display_name,
+              pincode: data.address?.postcode || prev.pincode,
+            }));
+            setLocationSuccess(true);
+          }
+        } catch (err) {
+          console.error("Failed to fetch address", err);
+          setLocationSuccess(true);
+        } finally {
+          setLocating(false);
+        }
+      },
+      (error) => {
+        setLocating(false);
+        alert("Please allow location access to auto-detect your delivery address.");
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
   if (!items.length) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pt-32 pb-20">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h1 className="text-4xl font-bold text-green-800 mb-4">
-            Checkout
-          </h1>
+          <h1 className="text-4xl font-bold text-green-800 mb-4">Checkout</h1>
           <p className="text-gray-600 mb-8">
             Your cart is empty. Add some products to checkout.
           </p>
@@ -54,7 +99,6 @@ export default function CheckoutPage() {
       ...prev,
       [name]: value,
     }));
-    // Clear error for this field
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -109,7 +153,21 @@ export default function CheckoutPage() {
       }));
 
       const total = getTotal();
-      const orderId = await createOrder(formData, orderItems, total);
+
+      // GPS Coordinates மற்றும் Payment Details-ஐ Customer Details உடன் இணைத்தல்
+      const orderCustomerData: any = {
+        ...formData,
+        paymentMethod: paymentMethod,
+        paymentStatus: paymentMethod === "cod" ? "Pay on Delivery" : "Paid Online",
+        geoCoordinates: locationCoords
+          ? {
+              latitude: locationCoords.lat,
+              longitude: locationCoords.lng,
+            }
+          : null,
+      };
+
+      const orderId = await createOrder(orderCustomerData, orderItems, total);
 
       router.push(`/order-confirmation/${orderId}`);
     } catch (error) {
@@ -152,9 +210,32 @@ export default function CheckoutPage() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl shadow-lg p-8"
             >
-              <h2 className="text-2xl font-bold text-green-800 mb-6">
-                Delivery Details
-              </h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <h2 className="text-2xl font-bold text-green-800">
+                  Delivery Details
+                </h2>
+
+                {/* GPS Location Button */}
+                <button
+                  type="button"
+                  onClick={handleGetLocation}
+                  disabled={locating}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-green-50 hover:bg-green-100 border border-green-600 text-green-700 text-sm font-semibold rounded-xl transition shadow-sm"
+                >
+                  <Navigation
+                    size={18}
+                    className={`text-green-600 ${locating ? "animate-spin" : ""}`}
+                  />
+                  {locating ? "Fetching Location..." : "📍 Use Current Live Location"}
+                </button>
+              </div>
+
+              {locationSuccess && (
+                <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-green-800 text-sm font-medium">
+                  <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
+                  <span>Live GPS coordinates captured for accurate doorstep delivery!</span>
+                </div>
+              )}
 
               <form onSubmit={(e) => e.preventDefault()}>
                 {/* Full Name */}
@@ -175,9 +256,7 @@ export default function CheckoutPage() {
                     placeholder="Enter your full name"
                   />
                   {errors.fullName && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.fullName}
-                    </p>
+                    <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
                   )}
                 </div>
 
@@ -290,6 +369,75 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
+                {/* Payment Method Selector */}
+                <div className="mb-6 pt-6 border-t-2 border-gray-100">
+                  <label className="block text-gray-800 font-bold mb-4 text-lg">
+                    Select Payment Method <span className="text-red-500">*</span>
+                  </label>
+
+                  <div className="space-y-3">
+                    {/* Cash on Delivery */}
+                    <label
+                      onClick={() => setPaymentMethod("cod")}
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${
+                        paymentMethod === "cod"
+                          ? "border-green-600 bg-green-50/70"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMode"
+                        value="cod"
+                        checked={paymentMethod === "cod"}
+                        onChange={() => setPaymentMethod("cod")}
+                        className="w-5 h-5 text-green-600 focus:ring-green-500"
+                      />
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">💵</span>
+                          <p className="font-bold text-gray-800">
+                            Cash on Delivery (COD)
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Pay cash or UPI upon doorstep delivery
+                        </p>
+                      </div>
+                    </label>
+
+                    {/* Online UPI (GPay / PhonePe) */}
+                    <label
+                      onClick={() => setPaymentMethod("upi")}
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition ${
+                        paymentMethod === "upi"
+                          ? "border-green-600 bg-green-50/70"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMode"
+                        value="upi"
+                        checked={paymentMethod === "upi"}
+                        onChange={() => setPaymentMethod("upi")}
+                        className="w-5 h-5 text-green-600 focus:ring-green-500"
+                      />
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">📱</span>
+                          <p className="font-bold text-gray-800">
+                            Pay Online via UPI (GPay / PhonePe / Paytm)
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Instant payment via UPI Apps
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
                 {errors.submit && (
                   <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 rounded-lg">
                     <p className="text-red-700 font-semibold">{errors.submit}</p>
@@ -298,7 +446,7 @@ export default function CheckoutPage() {
               </form>
             </motion.div>
 
-            {/* Order Summary on Desktop */}
+            {/* Order Items Summary for Desktop */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -324,9 +472,7 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <p className="font-bold text-green-800">
-                      {formatPrice(
-                        cartItem.product.price * cartItem.quantity
-                      )}
+                      {formatPrice(cartItem.product.price * cartItem.quantity)}
                     </p>
                   </div>
                 ))}
@@ -356,7 +502,7 @@ export default function CheckoutPage() {
             </motion.div>
           </div>
 
-          {/* Order Summary Sidebar */}
+          {/* Sidebar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -386,9 +532,7 @@ export default function CheckoutPage() {
                         Qty: {cartItem.quantity}
                       </p>
                       <p className="font-bold text-green-800 text-sm">
-                        {formatPrice(
-                          cartItem.product.price * cartItem.quantity
-                        )}
+                        {formatPrice(cartItem.product.price * cartItem.quantity)}
                       </p>
                     </div>
                   </div>
@@ -405,8 +549,10 @@ export default function CheckoutPage() {
                   <span className="text-green-600 font-semibold">Free</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Tax</span>
-                  <span>₹0</span>
+                  <span>Payment Mode</span>
+                  <span className="font-semibold text-gray-800 uppercase text-xs bg-gray-100 px-2 py-1 rounded">
+                    {paymentMethod === "cod" ? "Cash on Delivery" : "Online UPI"}
+                  </span>
                 </div>
               </div>
 
@@ -422,7 +568,7 @@ export default function CheckoutPage() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={isLoading}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-2 transition"
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-4 rounded-full font-semibold flex items-center justify-center gap-2 transition shadow-md"
               >
                 {isLoading ? (
                   <>
@@ -431,7 +577,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    Place Order
+                    Place Order ({paymentMethod === "cod" ? "COD" : "UPI"})
                     <ArrowRight size={20} />
                   </>
                 )}
