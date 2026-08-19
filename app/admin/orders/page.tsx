@@ -146,6 +146,7 @@ export default function AdminOrdersPage() {
           </p>
         </motion.div>
 
+        {/* Dashboard Stats */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -178,6 +179,7 @@ export default function AdminOrdersPage() {
           />
         </motion.div>
 
+        {/* Orders List */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -194,8 +196,13 @@ export default function AdminOrdersPage() {
           ) : (
             <div className="space-y-4">
               {orders.map((order, index) => {
-                const orderData = order as any;
                 const geo = (order.customerDetails as any)?.geoCoordinates;
+                const mapDestination =
+                  geo && geo.latitude && geo.longitude
+                    ? `${geo.latitude},${geo.longitude}`
+                    : encodeURIComponent(
+                        `${order.customerDetails.deliveryAddress}, ${order.customerDetails.pincode}`
+                      );
 
                 return (
                   <motion.div
@@ -205,6 +212,7 @@ export default function AdminOrdersPage() {
                     transition={{ delay: index * 0.05 }}
                     className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition overflow-hidden border border-gray-100"
                   >
+                    {/* Order Header */}
                     <div
                       className="p-6 cursor-pointer hover:bg-gray-50 transition"
                       onClick={() =>
@@ -228,11 +236,10 @@ export default function AdminOrdersPage() {
                             >
                               {STATUS_LABELS[order.orderStatus]}
                             </span>
-
                             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
-                              {orderData.paymentMethod === "cod"
+                              {(order as any).paymentMethod === "cod"
                                 ? "💵 COD"
-                                : "📱 Online UPI"}
+                                : "📱 UPI"}
                             </span>
                           </div>
 
@@ -281,6 +288,7 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
 
+                    {/* Order Details */}
                     {expandedOrderId === order.docId && (
                       <motion.div
                         initial={{ height: 0 }}
@@ -288,6 +296,7 @@ export default function AdminOrdersPage() {
                         exit={{ height: 0 }}
                         className="border-t-2 border-gray-100 p-6 bg-gray-50/70"
                       >
+                        {/* Customer Details */}
                         <div className="mb-6 pb-6 border-b border-gray-200">
                           <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                             <MapPin size={18} />
@@ -310,39 +319,18 @@ export default function AdminOrdersPage() {
                               <p className="text-sm text-gray-600 mb-1">
                                 Delivery Address
                               </p>
-                              <div className="flex gap-2">
-                                <MapPin size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex items-start gap-2">
+                                <MapPin size={18} className="text-green-600 flex-shrink-0 mt-1" />
                                 <div>
-                                  <p className="font-semibold text-gray-800">
+                                  <p className="font-semibold text-gray-800 text-base">
                                     {order.customerDetails.deliveryAddress}
                                   </p>
                                   {order.customerDetails.landmark && (
-                                    <p className="text-sm text-gray-600 mt-1">
+                                    <p className="text-sm text-gray-600 mt-0.5">
                                       Landmark: {order.customerDetails.landmark}
                                     </p>
                                   )}
                                 </div>
-                              </div>
-
-                              <div className="mt-4">
-                                <a
-                                  href={
-                                    geo?.latitude && geo?.longitude
-                                      ? `https://www.google.com/maps/dir/?api=1&destination=${geo.latitude},${geo.longitude}`
-                                      : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-                                          order.customerDetails.deliveryAddress +
-                                            (order.customerDetails.landmark ? ", " + order.customerDetails.landmark : "") +
-                                            ", " +
-                                            order.customerDetails.pincode
-                                        )}`
-                                  }
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow transition text-sm"
-                                >
-                                  <Navigation size={18} />
-                                  📍 Start Delivery Navigation (Google Maps)
-                                </a>
                               </div>
                             </div>
                             <div>
@@ -354,6 +342,7 @@ export default function AdminOrdersPage() {
                           </div>
                         </div>
 
+                        {/* Order Items */}
                         <div className="mb-6 pb-6 border-b border-gray-200">
                           <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                             <Package size={18} />
@@ -381,40 +370,48 @@ export default function AdminOrdersPage() {
                           </div>
                         </div>
 
-                        <div className="mb-6 pb-6 border-b border-gray-200 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                        {/* Order Summary */}
+                        <div className="mb-6 pb-6 border-b border-gray-200 bg-white p-4 rounded-xl border border-gray-100">
                           <div className="flex justify-between mb-2">
                             <span className="text-gray-600">Subtotal</span>
-                            <span className="font-semibold">
-                              {formatPrice(order.subtotal)}
-                            </span>
+                            <span className="font-semibold">{formatPrice(order.subtotal)}</span>
                           </div>
                           <div className="flex justify-between mb-2">
                             <span className="text-gray-600">Tax</span>
-                            <span className="font-semibold">
-                              {formatPrice(order.tax)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between mb-2">
-                            <span className="text-gray-600">Payment Mode</span>
-                            <span className="font-bold text-gray-800">
-                              {orderData.paymentMethod === "cod" ? "💵 Cash on Delivery" : "📱 Online UPI"}
-                            </span>
+                            <span className="font-semibold">{formatPrice(order.tax)}</span>
                           </div>
                           <div className="flex justify-between mb-2">
                             <span className="text-gray-600">Payment Status</span>
-                            <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-blue-800">
-                              {order.paymentStatus}
-                            </span>
+                            <span className="font-bold text-blue-800">{order.paymentStatus}</span>
                           </div>
-                          <div className="flex justify-between border-t pt-3 mt-2">
+                          <div className="flex justify-between border-t pt-2 mt-2">
                             <span className="font-bold text-green-800 text-lg">Total</span>
-                            <span className="text-xl font-bold text-green-800">
-                              {formatPrice(order.total)}
-                            </span>
+                            <span className="text-xl font-bold text-green-800">{formatPrice(order.total)}</span>
                           </div>
                         </div>
 
+                        {/* Action Buttons Row */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          {/* Google Maps Live Route Button */}
+                          <a
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${mapDestination}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md transition text-sm"
+                          >
+                            <Navigation size={18} />
+                            📍 Open Google Maps
+                          </a>
+
+                          {/* WhatsApp Customer */}
+                          <button
+                            onClick={() => handleWhatsApp(order)}
+                            className="px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-sm text-sm"
+                          >
+                            💬 WhatsApp
+                          </button>
+
+                          {/* Status Progression Button */}
                           {STATUS_FLOW[order.orderStatus]?.map((nextStatus) => (
                             <button
                               key={nextStatus}
@@ -422,51 +419,30 @@ export default function AdminOrdersPage() {
                                 handleStatusUpdate(order, nextStatus as AdminOrder["orderStatus"])
                               }
                               disabled={updatingStatus.has(order.docId!)}
-                              className="px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-xl font-semibold transition shadow-sm text-sm"
+                              className="px-4 py-3 bg-green-700 hover:bg-green-800 disabled:bg-gray-400 text-white rounded-xl font-bold transition shadow-sm text-sm text-center"
                             >
                               {updatingStatus.has(order.docId!)
                                 ? "Updating..."
                                 : nextStatus === "confirmed"
-                                ? "✓ Confirm Order"
+                                ? "✓ Confirm"
                                 : nextStatus === "preparing"
-                                ? "🔨 Start Preparing"
+                                ? "🔨 Prepare"
                                 : nextStatus === "out_for_delivery"
-                                ? "🚚 Out for Delivery"
+                                ? "🚚 Out Delivery"
                                 : nextStatus === "delivered"
                                 ? "✓ Mark Delivered"
                                 : "Cancel"}
                             </button>
                           ))}
 
-                          <button
-                            onClick={() => handleWhatsApp(order)}
-                            className="px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition shadow-sm text-sm"
-                          >
-                            💬 WhatsApp Customer
-                          </button>
-
+                          {/* View Order Link */}
                           <Link
                             href={`/order-confirmation/${order.id}`}
-                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition shadow-sm text-sm text-center"
+                            className="px-4 py-3 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-bold transition shadow-sm text-sm text-center flex items-center justify-center"
                             target="_blank"
                           >
-                            👁 View Customer Page
+                            👁 View Order
                           </Link>
-
-                          {order.orderStatus !== "cancelled" &&
-                            order.orderStatus !== "delivered" && (
-                              <button
-                                onClick={() =>
-                                  handleStatusUpdate(order, "cancelled")
-                                }
-                                disabled={updatingStatus.has(order.docId!)}
-                                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-xl font-semibold transition shadow-sm text-sm"
-                              >
-                                {updatingStatus.has(order.docId!)
-                                  ? "Updating..."
-                                  : "❌ Cancel Order"}
-                              </button>
-                            )}
                         </div>
                       </motion.div>
                     )}
