@@ -201,8 +201,15 @@ export default function AdminOrdersPage() {
               {orders.map((order, index) => {
                 const orderData = order as any;
                 const cust = order.customerDetails as any;
-                const isUpi = cust?.paymentMethod === "upi" || orderData?.paymentMethod === "upi";
-                const isCod = cust?.paymentMethod === "cod" || orderData?.paymentMethod === "cod" || !isUpi;
+
+                // COD / UPI சரிபார்த்தல்
+                const isUpi =
+                  cust?.paymentMethod === "upi" ||
+                  orderData?.paymentMethod === "upi" ||
+                  orderData?.paymentStatus?.toLowerCase().includes("upi") ||
+                  orderData?.paymentStatus?.toLowerCase().includes("online");
+
+                const isCod = !isUpi;
                 const utr = cust?.utrNumber || orderData?.utrNumber;
 
                 const geo = cust?.geoCoordinates;
@@ -246,23 +253,23 @@ export default function AdminOrdersPage() {
                               {STATUS_LABELS[order.orderStatus]}
                             </span>
 
-                            {/* Payment Method Badge in Header */}
+                            {/* பேமெண்ட் முறை Badge */}
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                              className={`px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5 shadow-sm ${
                                 isCod
-                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
-                                  : "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                                  ? "bg-amber-100 text-amber-900 border-2 border-amber-400"
+                                  : "bg-emerald-100 text-emerald-900 border-2 border-emerald-500"
                               }`}
                             >
                               {isCod ? (
                                 <>
-                                  <Banknote size={14} />
-                                  💵 Cash on Delivery
+                                  <Banknote size={15} className="text-amber-700" />
+                                  💵 CASH ON DELIVERY
                                 </>
                               ) : (
                                 <>
-                                  <CreditCard size={14} />
-                                  📱 Online UPI (Paid)
+                                  <CreditCard size={15} className="text-emerald-700" />
+                                  📱 ONLINE UPI (PAID)
                                 </>
                               )}
                             </span>
@@ -273,7 +280,7 @@ export default function AdminOrdersPage() {
                               <Phone size={16} />
                               {order.customerDetails.mobileNumber}
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
+                            <div className="flex items-center gap-2 text-gray-800 font-bold">
                               <DollarSign size={16} />
                               {formatPrice(order.total)}
                             </div>
@@ -313,7 +320,7 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
 
-                    {/* Order Details (Expanded View) */}
+                    {/* Expanded View */}
                     {expandedOrderId === order.docId && (
                       <motion.div
                         initial={{ height: 0 }}
@@ -367,7 +374,7 @@ export default function AdminOrdersPage() {
                           </div>
                         </div>
 
-                        {/* Items Ordered */}
+                        {/* Order Items */}
                         <div className="mb-6 pb-6 border-b border-gray-200">
                           <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                             <Package size={18} />
@@ -395,60 +402,61 @@ export default function AdminOrdersPage() {
                           </div>
                         </div>
 
-                        {/* Payment & Order Summary Card */}
+                        {/* Payment Box */}
                         <div className="mb-6 pb-6 border-b border-gray-200 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
                           <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
                             <CreditCard size={18} />
                             Payment Information
                           </h4>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pb-4 border-b">
+                          <div className="p-4 rounded-xl mb-4 bg-gray-50 border border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Payment Method</p>
-                              <div className="flex items-center gap-2">
-                                {isCod ? (
-                                  <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-lg text-sm flex items-center gap-1.5">
-                                    <Banknote size={16} /> Cash on Delivery (Collect ₹{order.total})
-                                  </span>
-                                ) : (
-                                  <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold rounded-lg text-sm flex items-center gap-1.5">
-                                    <CreditCard size={16} /> Online UPI (GPay / PhonePe)
-                                  </span>
-                                )}
-                              </div>
+                              <p className="text-xs text-gray-500 font-bold mb-1">
+                                PAYMENT MODE:
+                              </p>
+                              {isCod ? (
+                                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-amber-500 text-white font-black rounded-lg text-sm shadow-sm">
+                                  <Banknote size={18} /> Cash on Delivery (Collect ₹{order.total})
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-600 text-white font-black rounded-lg text-sm shadow-sm">
+                                  <CreditCard size={18} /> Paid Online via UPI (₹{order.total})
+                                </span>
+                              )}
                             </div>
 
                             <div>
-                              <p className="text-xs text-gray-500 mb-1">Payment Status</p>
-                              <span className="font-bold text-gray-800 text-sm">
+                              <p className="text-xs text-gray-500 font-bold mb-1">
+                                STATUS:
+                              </p>
+                              <span className="font-black text-gray-800 text-base">
                                 {order.paymentStatus || (isCod ? "Pay on Delivery" : "Paid Online")}
                               </span>
                             </div>
 
-                            {/* UTR / Transaction ID (If Online UPI) */}
                             {utr && (
-                              <div className="sm:col-span-2 bg-green-50 p-3 rounded-xl border border-green-200">
-                                <p className="text-xs text-green-800 font-bold mb-0.5">
+                              <div className="sm:col-span-2 bg-green-50 p-3 rounded-xl border border-green-300">
+                                <p className="text-xs text-green-900 font-bold mb-0.5">
                                   UPI Reference / UTR Number:
                                 </p>
-                                <p className="font-mono text-sm font-bold text-green-950 select-all">
+                                <p className="font-mono text-sm font-black text-green-950 select-all">
                                   {utr}
                                 </p>
                               </div>
                             )}
                           </div>
 
-                          <div className="flex justify-between mb-2">
-                            <span className="text-gray-600">Subtotal</span>
-                            <span className="font-semibold">{formatPrice(order.subtotal)}</span>
+                          <div className="flex justify-between mb-1 text-sm text-gray-600">
+                            <span>Subtotal</span>
+                            <span>{formatPrice(order.subtotal)}</span>
                           </div>
-                          <div className="flex justify-between mb-2">
-                            <span className="text-gray-600">Tax</span>
-                            <span className="font-semibold">{formatPrice(order.tax)}</span>
+                          <div className="flex justify-between mb-1 text-sm text-gray-600">
+                            <span>Tax / Delivery</span>
+                            <span className="text-green-600 font-semibold">FREE</span>
                           </div>
                           <div className="flex justify-between border-t pt-3 mt-2">
                             <span className="font-bold text-green-800 text-lg">Total Amount</span>
-                            <span className="text-xl font-black text-green-800">
+                            <span className="text-2xl font-black text-green-800">
                               {formatPrice(order.total)}
                             </span>
                           </div>
@@ -456,7 +464,6 @@ export default function AdminOrdersPage() {
 
                         {/* Action Buttons Row */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                          {/* Google Maps Live Route Button */}
                           <a
                             href={`https://www.google.com/maps/dir/?api=1&destination=${mapDestination}`}
                             target="_blank"
@@ -467,7 +474,6 @@ export default function AdminOrdersPage() {
                             📍 Open Google Maps
                           </a>
 
-                          {/* WhatsApp Customer */}
                           <button
                             onClick={() => handleWhatsApp(order)}
                             className="px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-sm text-sm"
@@ -475,7 +481,6 @@ export default function AdminOrdersPage() {
                             💬 WhatsApp
                           </button>
 
-                          {/* Status Progression Button */}
                           {STATUS_FLOW[order.orderStatus]?.map((nextStatus) => (
                             <button
                               key={nextStatus}
@@ -499,7 +504,6 @@ export default function AdminOrdersPage() {
                             </button>
                           ))}
 
-                          {/* View Order Link */}
                           <Link
                             href={`/order-confirmation/${order.id}`}
                             className="px-4 py-3 bg-gray-700 hover:bg-gray-800 text-white rounded-xl font-bold transition shadow-sm text-sm text-center flex items-center justify-center"

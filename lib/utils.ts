@@ -34,6 +34,14 @@ export const createOrder = async (
     const tax = 0;
     const finalTotal = Number(total) || subtotal + deliveryCharge + tax;
 
+    const custAny = customerDetails as any;
+    const payMethod = custAny.paymentMethod || "cod";
+    const payStatus =
+      custAny.paymentStatus ||
+      (payMethod === "upi" ? "Paid Online (UPI)" : "Pay on Delivery (COD)");
+    const utr = custAny.utrNumber || null;
+    const coords = custAny.geoCoordinates || null;
+
     const orderData = {
       id: orderId,
       status: "pending",
@@ -44,6 +52,10 @@ export const createOrder = async (
         deliveryAddress: customerDetails.deliveryAddress.trim(),
         landmark: customerDetails.landmark?.trim() || "",
         pincode: customerDetails.pincode.trim(),
+        paymentMethod: payMethod,
+        paymentStatus: payStatus,
+        utrNumber: utr,
+        geoCoordinates: coords,
       },
       items: items.map((item) => ({
         productId: item.productId,
@@ -56,7 +68,10 @@ export const createOrder = async (
       deliveryCharge,
       tax,
       total: finalTotal,
-      paymentStatus: "pending",
+      paymentMethod: payMethod,
+      paymentStatus: payStatus,
+      utrNumber: utr,
+      geoCoordinates: coords,
       orderStatus: "pending",
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
@@ -85,11 +100,9 @@ export const createOrder = async (
   }
 };
 
-// Get order details from Firestore (placeholder for future implementation)
+// Get order details from Firestore
 export const getOrder = async (): Promise<null> => {
   try {
-    // Note: In a real app, you'd query by orderId field
-    // For now, we'll return a basic structure
     return null;
   } catch (error) {
     console.error("Error fetching order:", error);
