@@ -23,6 +23,8 @@ import {
   ShoppingCart,
   DollarSign,
   Navigation,
+  CreditCard,
+  Banknote,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -133,6 +135,7 @@ export default function AdminOrdersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pt-20 pb-20">
       <div className="max-w-7xl mx-auto px-6">
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -196,7 +199,13 @@ export default function AdminOrdersPage() {
           ) : (
             <div className="space-y-4">
               {orders.map((order, index) => {
-                const geo = (order.customerDetails as any)?.geoCoordinates;
+                const orderData = order as any;
+                const cust = order.customerDetails as any;
+                const isUpi = cust?.paymentMethod === "upi" || orderData?.paymentMethod === "upi";
+                const isCod = cust?.paymentMethod === "cod" || orderData?.paymentMethod === "cod" || !isUpi;
+                const utr = cust?.utrNumber || orderData?.utrNumber;
+
+                const geo = cust?.geoCoordinates;
                 const mapDestination =
                   geo && geo.latitude && geo.longitude
                     ? `${geo.latitude},${geo.longitude}`
@@ -236,10 +245,26 @@ export default function AdminOrdersPage() {
                             >
                               {STATUS_LABELS[order.orderStatus]}
                             </span>
-                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
-                              {(order as any).paymentMethod === "cod"
-                                ? "💵 COD"
-                                : "📱 UPI"}
+
+                            {/* Payment Method Badge in Header */}
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                                isCod
+                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                  : "bg-emerald-100 text-emerald-900 border border-emerald-300"
+                              }`}
+                            >
+                              {isCod ? (
+                                <>
+                                  <Banknote size={14} />
+                                  💵 Cash on Delivery
+                                </>
+                              ) : (
+                                <>
+                                  <CreditCard size={14} />
+                                  📱 Online UPI (Paid)
+                                </>
+                              )}
                             </span>
                           </div>
 
@@ -288,7 +313,7 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
 
-                    {/* Order Details */}
+                    {/* Order Details (Expanded View) */}
                     {expandedOrderId === order.docId && (
                       <motion.div
                         initial={{ height: 0 }}
@@ -296,7 +321,7 @@ export default function AdminOrdersPage() {
                         exit={{ height: 0 }}
                         className="border-t-2 border-gray-100 p-6 bg-gray-50/70"
                       >
-                        {/* Customer Details */}
+                        {/* Customer & Delivery Details */}
                         <div className="mb-6 pb-6 border-b border-gray-200">
                           <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                             <MapPin size={18} />
@@ -342,7 +367,7 @@ export default function AdminOrdersPage() {
                           </div>
                         </div>
 
-                        {/* Order Items */}
+                        {/* Items Ordered */}
                         <div className="mb-6 pb-6 border-b border-gray-200">
                           <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2">
                             <Package size={18} />
@@ -370,8 +395,49 @@ export default function AdminOrdersPage() {
                           </div>
                         </div>
 
-                        {/* Order Summary */}
-                        <div className="mb-6 pb-6 border-b border-gray-200 bg-white p-4 rounded-xl border border-gray-100">
+                        {/* Payment & Order Summary Card */}
+                        <div className="mb-6 pb-6 border-b border-gray-200 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                          <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                            <CreditCard size={18} />
+                            Payment Information
+                          </h4>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pb-4 border-b">
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Payment Method</p>
+                              <div className="flex items-center gap-2">
+                                {isCod ? (
+                                  <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-lg text-sm flex items-center gap-1.5">
+                                    <Banknote size={16} /> Cash on Delivery (Collect ₹{order.total})
+                                  </span>
+                                ) : (
+                                  <span className="px-3 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold rounded-lg text-sm flex items-center gap-1.5">
+                                    <CreditCard size={16} /> Online UPI (GPay / PhonePe)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Payment Status</p>
+                              <span className="font-bold text-gray-800 text-sm">
+                                {order.paymentStatus || (isCod ? "Pay on Delivery" : "Paid Online")}
+                              </span>
+                            </div>
+
+                            {/* UTR / Transaction ID (If Online UPI) */}
+                            {utr && (
+                              <div className="sm:col-span-2 bg-green-50 p-3 rounded-xl border border-green-200">
+                                <p className="text-xs text-green-800 font-bold mb-0.5">
+                                  UPI Reference / UTR Number:
+                                </p>
+                                <p className="font-mono text-sm font-bold text-green-950 select-all">
+                                  {utr}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
                           <div className="flex justify-between mb-2">
                             <span className="text-gray-600">Subtotal</span>
                             <span className="font-semibold">{formatPrice(order.subtotal)}</span>
@@ -380,13 +446,11 @@ export default function AdminOrdersPage() {
                             <span className="text-gray-600">Tax</span>
                             <span className="font-semibold">{formatPrice(order.tax)}</span>
                           </div>
-                          <div className="flex justify-between mb-2">
-                            <span className="text-gray-600">Payment Status</span>
-                            <span className="font-bold text-blue-800">{order.paymentStatus}</span>
-                          </div>
-                          <div className="flex justify-between border-t pt-2 mt-2">
-                            <span className="font-bold text-green-800 text-lg">Total</span>
-                            <span className="text-xl font-bold text-green-800">{formatPrice(order.total)}</span>
+                          <div className="flex justify-between border-t pt-3 mt-2">
+                            <span className="font-bold text-green-800 text-lg">Total Amount</span>
+                            <span className="text-xl font-black text-green-800">
+                              {formatPrice(order.total)}
+                            </span>
                           </div>
                         </div>
 
