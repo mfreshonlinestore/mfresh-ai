@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Loader, MapPin, CheckCircle, Navigation, QrCode, Smartphone } from "lucide-react";
+import { ArrowRight, Loader, MapPin, CheckCircle, Navigation, Search, Smartphone } from "lucide-react";
 import { useState } from "react";
 
 export default function CheckoutPage() {
@@ -21,8 +21,13 @@ export default function CheckoutPage() {
   const [locating, setLocating] = useState(false);
   const [locationSuccess, setLocationSuccess] = useState(false);
 
+  // Search Address / Different Location States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
   // உங்கள் கடை UPI ID மற்றும் பெயர்
-  const STORE_UPI_ID = "9094792689@upi"; // உங்கள் GPay/PhonePe UPI ID-ஐ இங்கு மாற்றிக்கொள்ளலாம்
+  const STORE_UPI_ID = "9094792689@upi";
   const STORE_NAME = "M Fresh Dairy";
 
   const [formData, setFormData] = useState<CustomerDetails>({
@@ -34,6 +39,7 @@ export default function CheckoutPage() {
     pincode: "",
   });
 
+  // 1. Current Live GPS Location Fetcher
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
@@ -74,6 +80,41 @@ export default function CheckoutPage() {
       },
       { enableHighAccuracy: true }
     );
+  };
+
+  // 2. Search Any Location (Blinkit/Zepto Type Location Finder)
+  const handleSearchLocation = async () => {
+    if (!searchQuery.trim()) return;
+
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          searchQuery
+        )}&countrycodes=in&limit=5`
+      );
+      const data = await res.json();
+      setSearchResults(data || []);
+    } catch (err) {
+      console.error("Error searching address:", err);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // வாடிக்கையாளர் தேடிய முகவரியைத் தேர்வு செய்யும் போது
+  const handleSelectLocation = (place: any) => {
+    const lat = parseFloat(place.lat);
+    const lon = parseFloat(place.lon);
+
+    setLocationCoords({ lat: lat, lng: lon });
+    setFormData((prev) => ({
+      ...prev,
+      deliveryAddress: place.display_name,
+    }));
+    setSearchResults([]);
+    setSearchQuery("");
+    setLocationSuccess(true);
   };
 
   if (!items.length) {
@@ -211,7 +252,7 @@ export default function CheckoutPage() {
           className="mb-12"
         >
           <h1 className="text-5xl font-bold text-green-800 mb-2">Checkout</h1>
-          <p className="text-gray-600">Complete your order details</p>
+          <p className="text-gray-600">Complete your delivery address & payment</p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -221,29 +262,76 @@ export default function CheckoutPage() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl shadow-lg p-8"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h2 className="text-2xl font-bold text-green-800">
-                  Delivery Details
-                </h2>
+              <h2 className="text-2xl font-bold text-green-800 mb-4">
+                Delivery Location
+              </h2>
 
-                <button
-                  type="button"
-                  onClick={handleGetLocation}
-                  disabled={locating}
-                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-green-50 hover:bg-green-100 border border-green-600 text-green-700 text-sm font-semibold rounded-xl transition shadow-sm"
-                >
-                  <Navigation
-                    size={18}
-                    className={`text-green-600 ${locating ? "animate-spin" : ""}`}
-                  />
-                  {locating ? "Fetching Location..." : "📍 Use Current Live Location"}
-                </button>
+              {/* Location Select Options: Live GPS OR Search Any Area */}
+              <div className="mb-6 bg-green-50/60 p-4 rounded-2xl border border-green-200">
+                <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-3">
+                  <span className="text-sm font-bold text-gray-800">
+                    📍 Choose Delivery Location:
+                  </span>
+                  
+                  {/* Current Live Location Button */}
+                  <button
+                    type="button"
+                    onClick={handleGetLocation}
+                    disabled={locating}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 py-2 px-4 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                  >
+                    <Navigation
+                      size={14}
+                      className={locating ? "animate-spin" : ""}
+                    />
+                    {locating ? "Fetching Live Location..." : "Use Current Location"}
+                  </button>
+                </div>
+
+                {/* Search Any Location Input (Blinkit style) */}
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearchLocation()}
+                      placeholder="Or search street, apartment, area (e.g. T Nagar, Anna Nagar)..."
+                      className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-green-600 shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSearchLocation}
+                      disabled={searching}
+                      className="px-4 py-2.5 bg-gray-800 hover:bg-black text-white rounded-xl text-sm font-semibold flex items-center gap-1 transition"
+                    >
+                      <Search size={16} />
+                      {searching ? "..." : "Search"}
+                    </button>
+                  </div>
+
+                  {/* Search Results Dropdown */}
+                  {searchResults.length > 0 && (
+                    <div className="absolute left-0 right-0 top-12 z-20 bg-white rounded-xl shadow-xl border border-gray-200 max-h-60 overflow-y-auto divide-y">
+                      {searchResults.map((result, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => handleSelectLocation(result)}
+                          className="p-3 text-xs text-gray-700 hover:bg-green-50 cursor-pointer flex items-start gap-2 transition"
+                        >
+                          <MapPin size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
+                          <span>{result.display_name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {locationSuccess && (
                 <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-green-800 text-sm font-medium">
                   <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
-                  <span>Live GPS coordinates captured for accurate doorstep delivery!</span>
+                  <span>GPS Delivery Location captured successfully!</span>
                 </div>
               )}
 
@@ -315,7 +403,7 @@ export default function CheckoutPage() {
 
                 <div className="mb-6">
                   <label className="block text-gray-700 font-semibold mb-2">
-                    Delivery Address <span className="text-red-500">*</span>
+                    Delivery Address (House No, Street, Area) <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     name="deliveryAddress"
@@ -327,7 +415,7 @@ export default function CheckoutPage() {
                         ? "border-red-500"
                         : "border-gray-300 hover:border-gray-400"
                     }`}
-                    placeholder="Enter your complete delivery address"
+                    placeholder="Enter complete door number and street address"
                   />
                   {errors.deliveryAddress && (
                     <p className="text-red-500 text-sm mt-1">
@@ -346,7 +434,7 @@ export default function CheckoutPage() {
                     value={formData.landmark}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg hover:border-gray-400 focus:outline-none focus:border-green-600 transition"
-                    placeholder="Nearby landmark or building name"
+                    placeholder="Nearby landmark or apartment name"
                   />
                 </div>
 
@@ -373,7 +461,7 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Payment Options */}
+                {/* Payment Option Selector */}
                 <div className="mb-6 pt-6 border-t-2 border-gray-100">
                   <label className="block text-gray-800 font-bold mb-4 text-lg">
                     Select Payment Method <span className="text-red-500">*</span>
@@ -404,7 +492,7 @@ export default function CheckoutPage() {
                           </p>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Pay cash upon doorstep delivery
+                          Pay cash or UPI upon doorstep delivery
                         </p>
                       </div>
                     </label>
@@ -439,7 +527,6 @@ export default function CheckoutPage() {
                     </label>
                   </div>
 
-                  {/* UPI QR & Intent Payment Section */}
                   {paymentMethod === "upi" && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
@@ -453,7 +540,6 @@ export default function CheckoutPage() {
                         Pay via Google Pay, PhonePe, Paytm, or any UPI App
                       </p>
 
-                      {/* Mobile Instant Pay Button */}
                       <a
                         href={upiPaymentUrl}
                         className="w-full mb-4 inline-flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-md transition"
@@ -466,7 +552,6 @@ export default function CheckoutPage() {
                         <span>── OR SCAN QR CODE ──</span>
                       </div>
 
-                      {/* Dynamic UPI QR Code */}
                       <div className="flex flex-col items-center justify-center p-3 bg-white border rounded-xl shadow-inner max-w-xs mx-auto mb-4">
                         <img
                           src={upiQrCodeUrl}
@@ -478,7 +563,6 @@ export default function CheckoutPage() {
                         </p>
                       </div>
 
-                      {/* UTR / Transaction ID Input */}
                       <div className="text-left max-w-md mx-auto">
                         <label className="block text-gray-700 text-sm font-semibold mb-1">
                           UPI Reference / UTR Number (12 Digits) <span className="text-red-500">*</span>
