@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Loader, MapPin, CheckCircle, Navigation } from "lucide-react";
+import { ArrowRight, Loader, MapPin, CheckCircle, Navigation, QrCode, Smartphone } from "lucide-react";
 import { useState } from "react";
 
 export default function CheckoutPage() {
@@ -16,9 +16,14 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi">("cod");
+  const [utrNumber, setUtrNumber] = useState("");
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationSuccess, setLocationSuccess] = useState(false);
+
+  // உங்கள் கடை UPI ID மற்றும் பெயர்
+  const STORE_UPI_ID = "9094792689@upi"; // உங்கள் GPay/PhonePe UPI ID-ஐ இங்கு மாற்றிக்கொள்ளலாம்
+  const STORE_NAME = "M Fresh Dairy";
 
   const [formData, setFormData] = useState<CustomerDetails>({
     fullName: "",
@@ -131,9 +136,17 @@ export default function CheckoutPage() {
       newErrors.pincode = "Enter a valid 6-digit pincode";
     }
 
+    if (paymentMethod === "upi" && !utrNumber.trim()) {
+      newErrors.utrNumber = "Please enter the 12-digit UPI Reference / UTR Number";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const total = getTotal();
+  const upiPaymentUrl = `upi://pay?pa=${STORE_UPI_ID}&pn=${encodeURIComponent(STORE_NAME)}&am=${total}&cu=INR&tn=${encodeURIComponent("M Fresh Dairy Order")}`;
+  const upiQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiPaymentUrl)}`;
 
   const handlePlaceOrder = async () => {
     if (!validateForm()) {
@@ -152,8 +165,6 @@ export default function CheckoutPage() {
         subtotal: cartItem.product.price * cartItem.quantity,
       }));
 
-      const total = getTotal();
-
       const orderCustomerData: any = {
         fullName: formData.fullName,
         mobileNumber: formData.mobileNumber,
@@ -162,7 +173,8 @@ export default function CheckoutPage() {
         landmark: formData.landmark || "",
         pincode: formData.pincode,
         paymentMethod: paymentMethod,
-        paymentStatus: paymentMethod === "cod" ? "Pay on Delivery" : "Paid Online",
+        paymentStatus: paymentMethod === "cod" ? "Pay on Delivery" : "Paid Online (UPI)",
+        utrNumber: paymentMethod === "upi" ? utrNumber : null,
         geoCoordinates: locationCoords
           ? {
               latitude: locationCoords.lat,
@@ -189,8 +201,6 @@ export default function CheckoutPage() {
       setIsLoading(false);
     }
   };
-
-  const total = getTotal();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pt-32 pb-20">
@@ -363,6 +373,7 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
+                {/* Payment Options */}
                 <div className="mb-6 pt-6 border-t-2 border-gray-100">
                   <label className="block text-gray-800 font-bold mb-4 text-lg">
                     Select Payment Method <span className="text-red-500">*</span>
@@ -393,7 +404,7 @@ export default function CheckoutPage() {
                           </p>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Pay cash or UPI upon doorstep delivery
+                          Pay cash upon doorstep delivery
                         </p>
                       </div>
                     </label>
@@ -418,15 +429,77 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-xl">📱</span>
                           <p className="font-bold text-gray-800">
-                            Pay Online via UPI (GPay / PhonePe / Paytm)
+                            Online UPI (GPay / PhonePe / Paytm / QR)
                           </p>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Instant payment via UPI Apps
+                          Instant payment via UPI Apps & QR Code
                         </p>
                       </div>
                     </label>
                   </div>
+
+                  {/* UPI QR & Intent Payment Section */}
+                  {paymentMethod === "upi" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="mt-5 p-5 bg-gradient-to-b from-green-50 to-white border-2 border-green-500 rounded-2xl text-center"
+                    >
+                      <h4 className="font-bold text-green-800 text-lg mb-2">
+                        Scan & Pay ₹{total} via UPI
+                      </h4>
+                      <p className="text-xs text-gray-600 mb-4">
+                        Pay via Google Pay, PhonePe, Paytm, or any UPI App
+                      </p>
+
+                      {/* Mobile Instant Pay Button */}
+                      <a
+                        href={upiPaymentUrl}
+                        className="w-full mb-4 inline-flex items-center justify-center gap-2 py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-md transition"
+                      >
+                        <Smartphone size={20} />
+                        Tap to Pay with GPay / PhonePe
+                      </a>
+
+                      <div className="flex items-center justify-center my-3 text-xs text-gray-400 font-semibold">
+                        <span>── OR SCAN QR CODE ──</span>
+                      </div>
+
+                      {/* Dynamic UPI QR Code */}
+                      <div className="flex flex-col items-center justify-center p-3 bg-white border rounded-xl shadow-inner max-w-xs mx-auto mb-4">
+                        <img
+                          src={upiQrCodeUrl}
+                          alt="UPI Payment QR Code"
+                          className="w-44 h-44 object-contain rounded-lg shadow-sm"
+                        />
+                        <p className="text-xs text-gray-700 font-bold mt-2">
+                          UPI ID: <span className="text-green-700">{STORE_UPI_ID}</span>
+                        </p>
+                      </div>
+
+                      {/* UTR / Transaction ID Input */}
+                      <div className="text-left max-w-md mx-auto">
+                        <label className="block text-gray-700 text-sm font-semibold mb-1">
+                          UPI Reference / UTR Number (12 Digits) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={utrNumber}
+                          onChange={(e) => setUtrNumber(e.target.value)}
+                          placeholder="e.g. 423456789012"
+                          maxLength={16}
+                          className="w-full px-4 py-2.5 border-2 rounded-xl border-gray-300 focus:outline-none focus:border-green-600 text-sm"
+                        />
+                        {errors.utrNumber && (
+                          <p className="text-red-500 text-xs mt-1">{errors.utrNumber}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          Enter the 12-digit transaction ID from your GPay/PhonePe payment confirmation.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
 
                 {errors.submit && (
