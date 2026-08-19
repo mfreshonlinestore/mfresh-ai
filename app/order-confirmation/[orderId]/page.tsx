@@ -4,12 +4,18 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { CheckCircle, ArrowRight, Copy } from "lucide-react";
+import { CheckCircle, ArrowRight, Copy, AlertTriangle } from "lucide-react";
 import { getDb } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+} from "firebase/firestore";
 
 interface OrderData {
   id: string;
+  status?: string;
   customerDetails: {
     fullName: string;
     mobileNumber: string;
@@ -26,6 +32,7 @@ interface OrderData {
     subtotal: number;
   }>;
   subtotal: number;
+  deliveryCharge?: number;
   tax: number;
   total: number;
   paymentStatus: "pending" | "completed" | "failed";
@@ -33,51 +40,106 @@ interface OrderData {
   createdAt?: { toDate?: () => Date; seconds?: number; nanoseconds?: number } | null;
 }
 
+const STATUS_STEPS = [
+  { key: "pending", label: "Order Placed", detail: "We have received your order" },
+  { key: "confirmed", label: "Confirmed", detail: "We are confirming your order" },
+  { key: "preparing", label: "Preparing", detail: "We are preparing your items" },
+  { key: "out_for_delivery", label: "Out for Delivery", detail: "Your order is on the way" },
+  { key: "delivered", label: "Delivered", detail: "Enjoy your fresh dairy!" },
+] as const;
+
+const STATUS_ORDER = ["pending", "confirmed", "preparing", "out_for_delivery", "delivered"] as const;
+
+const getStatusIndex = (status: string): number => {
+  const index = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]);
+  return index === -1 ? 0 : index;
+};
+
 export default function OrderConfirmationPage() {
   const params = useParams();
-  const orderId = params.orderId as string;
+  const orderId = typeof params.orderId === "string" ? params.orderId : "";
 
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const db = getDb();
-        if (!db) {
-          throw new Error("Firebase is not initialized");
-        }
-
-        const q = query(
-          collection(db, "orders"),
-          where("id", "==", orderId)
-        );
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          const orderData = querySnapshot.docs[0].data() as OrderData;
-          setOrder(orderData);
-        } else {
-          console.log("Order not found");
-        }
-      } catch (error) {
-        console.error("Error fetching order:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (orderId) {
-      fetchOrder();
+    if (!orderId) {
+      setLoading(false);
+      setErrorMessage("Missing order ID. Please check the link and try again.");
+      return;
     }
+
+    const db = getDb();
+    if (!db) {
+      setLoading(false);
+      setErrorMessage(
+        "Firebase is not configured. Add your NEXT_PUBLIC_FIREBASE_* values in .env.local or Vercel and enable Firestore."
+      );
+      return;
+    }
+
+    const q = query(collection(db, "orders"), where("id", "==", orderId));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (snapshot.empty) {
+          setOrder(null);
+          setErrorMessage("");
+          setLoading(false);
+          return;
+        }
+
+        const docSnap = snapshot.docs[0];
+const data = docSnap.data();
+
+const orderData: OrderData = {
+  ...data,
+  id: data.id || docSnap.id,
+  status: data.orderStatus || data.status || "pending",
+} as OrderData;
+
+setOrder(orderData);
+setErrorMessage("");
+setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching order status from Firestore:", error);
+        setLoading(false);
+
+        if (error && typeof error === "object" && "code" in error && error.code === "permission-denied") {
+          setErrorMessage(
+            "This order cannot be loaded because Firestore permissions are blocking access."
+          );
+          return;
+        }
+
+        setErrorMessage(
+          "We could not load your order right now. Please check your connection and try again."
+        );
+      }
+    );
+
+    return () => unsubscribe();
   }, [orderId]);
 
-  const copyOrderId = () => {
-    navigator.clipboard.writeText(orderId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyOrderId = async () => {
+    try {
+      await navigator.clipboard.writeText(orderId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy order ID:", error);
+    }
   };
+
+  const currentStatus = order?.orderStatus || order?.status || "pending";
+  const currentStatusIndex = getStatusIndex(currentStatus);
+  const total = order?.total ?? 0;
+  const subtotal = order?.subtotal ?? 0;
+  const deliveryCharge = order?.deliveryCharge ?? 0;
+  const tax = order?.tax ?? 0;
 
   if (loading) {
     return (
@@ -87,6 +149,30 @@ export default function OrderConfirmationPage() {
             <div className="w-12 h-12 border-4 border-green-200 border-t-green-600 rounded-full" />
           </div>
           <p className="text-gray-600 font-semibold">Loading your order...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (errorMessage && !order) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pt-32 pb-20">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="bg-red-100 rounded-full p-6">
+              <AlertTriangle size={56} className="text-red-600" />
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+            Unable to Load Order
+          </h1>
+          <p className="text-gray-600 mb-8">{errorMessage}</p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold transition"
+          >
+            Back to Home
+          </Link>
         </div>
       </div>
     );
@@ -116,7 +202,6 @@ export default function OrderConfirmationPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white pt-32 pb-20">
       <div className="max-w-4xl mx-auto px-6">
-        {/* Success Message */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -133,20 +218,17 @@ export default function OrderConfirmationPage() {
           </h1>
 
           <p className="text-xl text-gray-600 mb-8">
-            Thank you for your order. We&apos;ll prepare it and deliver it to your
-            address.
+            Thank you for your order. We&apos;ll prepare it and deliver it to your address.
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Order Details */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="lg:col-span-2"
           >
-            {/* Order ID Card */}
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-green-800">Order ID</h2>
@@ -162,11 +244,54 @@ export default function OrderConfirmationPage() {
                 {orderId}
               </p>
               <p className="text-gray-600 mt-2 text-sm">
-                Save this ID for your records and customer support
+                Save this ID for your records and customer support.
               </p>
             </div>
 
-            {/* Customer Details */}
+            <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-green-800">Track Your Order</h2>
+                <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-semibold text-sm">
+                  {STATUS_STEPS[currentStatusIndex]?.label || "Order Placed"}
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                {STATUS_STEPS.map((step, index) => {
+                  const isDone = index < currentStatusIndex;
+                  const isActive = index === currentStatusIndex;
+                  const isFuture = index > currentStatusIndex;
+
+                  return (
+                    <div key={step.key} className="flex items-start gap-4">
+                      <div
+                        className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full border-2 ${
+                          isDone
+                            ? "border-green-600 bg-green-600 text-white"
+                            : isActive
+                            ? "border-green-600 bg-green-50 text-green-700"
+                            : "border-gray-300 bg-white text-gray-400"
+                        }`}
+                      >
+                        {isDone ? "✓" : isActive ? "●" : "○"}
+                      </div>
+
+                      <div className="flex-1 border-b border-gray-200 pb-4 last:border-b-0">
+                        <p
+                          className={`font-semibold ${
+                            isDone || isActive ? "text-green-800" : "text-gray-500"
+                          }`}
+                        >
+                          {step.label}
+                        </p>
+                        <p className="text-sm text-gray-600">{step.detail}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
               <h2 className="text-2xl font-bold text-green-800 mb-6">
                 Delivery Details
@@ -218,7 +343,6 @@ export default function OrderConfirmationPage() {
               </div>
             </div>
 
-            {/* Order Items */}
             <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
               <h2 className="text-2xl font-bold text-green-800 mb-6">
                 Order Items
@@ -227,88 +351,22 @@ export default function OrderConfirmationPage() {
               <div className="space-y-4">
                 {order.items.map((item) => (
                   <div
-                    key={item.productId}
+                    key={`${item.productId}-${item.productName}`}
                     className="flex justify-between items-center pb-4 border-b border-gray-200 last:border-0"
                   >
                     <div>
-                      <p className="font-semibold text-gray-800">
-                        {item.productName}
-                      </p>
+                      <p className="font-semibold text-gray-800">{item.productName}</p>
                       <p className="text-sm text-gray-600">
                         Qty: {item.quantity} × ₹{item.price}
                       </p>
                     </div>
-                    <p className="font-bold text-green-800">
-                      ₹{item.subtotal}
-                    </p>
+                    <p className="font-bold text-green-800">₹{item.subtotal}</p>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Order Status */}
-            <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-green-800 mb-6">
-                Order Status
-              </h2>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-4 h-4 bg-green-600 rounded-full" />
-                  <div>
-                    <p className="font-semibold text-gray-800">Order Placed</p>
-                    <p className="text-sm text-gray-600">
-                      {order.createdAt && typeof order.createdAt === "object" && "toDate" in order.createdAt
-                        ? order.createdAt.toDate?.().toLocaleString()
-                        : new Date().toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
-                  <div>
-                    <p className="font-semibold text-gray-800">Confirmed</p>
-                    <p className="text-sm text-gray-600">
-                      We&apos;re confirming your order
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
-                  <div>
-                    <p className="font-semibold text-gray-800">Preparing</p>
-                    <p className="text-sm text-gray-600">
-                      We&apos;re preparing your items
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
-                  <div>
-                    <p className="font-semibold text-gray-800">Delivering</p>
-                    <p className="text-sm text-gray-600">
-                      On the way to you
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="w-4 h-4 border-2 border-gray-300 rounded-full" />
-                  <div>
-                    <p className="font-semibold text-gray-800">Delivered</p>
-                    <p className="text-sm text-gray-600">
-                      Enjoy your fresh dairy!
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </motion.div>
 
-          {/* Order Summary Sidebar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -323,37 +381,38 @@ export default function OrderConfirmationPage() {
               <div className="space-y-4 mb-6 pb-6 border-b-2 border-gray-200">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
-                  <span>₹{order.subtotal}</span>
+                  <span>₹{subtotal}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Delivery</span>
-                  <span className="text-green-600 font-semibold">Free</span>
+                  <span className="text-green-600 font-semibold">₹{deliveryCharge}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Tax</span>
-                  <span>₹{order.tax}</span>
+                  <span>₹{tax}</span>
                 </div>
               </div>
 
               <div className="flex justify-between mb-8">
                 <span className="text-xl font-bold text-green-800">Total</span>
-                <span className="text-2xl font-bold text-green-800">
-                  ₹{order.total}
-                </span>
+                <span className="text-2xl font-bold text-green-800">₹{total}</span>
               </div>
 
               <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Current Status:</span>{" "}
+                  <span className="text-green-600 font-semibold">
+                    {STATUS_STEPS[currentStatusIndex]?.label || "Order Placed"}
+                  </span>
+                </p>
+                <p className="text-sm text-gray-700 mt-2">
                   <span className="font-semibold">Payment Status:</span>{" "}
                   <span className="text-green-600 font-semibold">
-                    {order.paymentStatus === "pending"
-                      ? "Pending"
-                      : "Completed"}
+                    {order.paymentStatus === "pending" ? "Pending" : "Completed"}
                   </span>
                 </p>
               </div>
 
-              {/* WhatsApp Support */}
               <a
                 href={`https://wa.me/919150852830?text=Hello M Fresh Dairy, I have an order with ID: ${orderId}`}
                 target="_blank"

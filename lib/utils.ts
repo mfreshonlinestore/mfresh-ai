@@ -36,6 +36,7 @@ export const createOrder = async (
 
     const orderData = {
       id: orderId,
+      status: "pending",
       customerDetails: {
         fullName: customerDetails.fullName.trim(),
         mobileNumber: customerDetails.mobileNumber.trim(),
